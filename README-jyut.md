@@ -1,46 +1,55 @@
-# BewlyBewly! Ave Mujica
+# BewlyBewly! Euphonium
 
 [English](README.md) | [官话 - 简体中文](README-cmn_CN.md) | [官話 - 繁體中文](README-cmn_TW.md) | 廣東話
 
 <p align="center" style="margin-bottom: 0px !important;">
-<img width="300" alt="BewlyBewly! Ave Mujica icon" src="https://github.com/VentusUta/BewlyBewly-AveMujica/raw/refs/heads/main/assets/bewly-ave-mujica-style-logo.svg"><br/>
+<img width="320" alt="BewlyBewly! Euphonium logo" src="./assets/re_logo.png"><br/>
 </p>
 
 <p align="center">係咁以執吓你嘅 bilibili 頁面。</p>
 
-<p align="center"><img src="https://img.shields.io/github/v/release/VentusUta/BewlyBewly-AveMujica"> <img src="https://img.shields.io/github/languages/code-size/VentusUta/BewlyBewly-AveMujica"></p>
+<p align="center"><img src="https://img.shields.io/github/v/release/Takina610/BewlyBewly-Euphonium"> <img src="https://img.shields.io/github/languages/code-size/Takina610/BewlyBewly-Euphonium"></p>
 
 ## 單撈
 
-- Firefox 系瀏覽器：<https://addons.mozilla.org/en-CA/firefox/addon/bewlybewly-avemujica/>
-- Chromium 系瀏覽器：
-  - Chrome Web Store：<https://chromewebstore.google.com/detail/bewlybewly-ave-mujica/lildghglkgcoanblbmenbefhnhifghjj>
-  - Edge Add-ons：<https://microsoftedge.microsoft.com/addons/detail/bewlybewly-ave-mujica/niekempinbfaomnaindmibagnaclpgee>
+BewlyBewly! Euphonium 係一個私人分叉版本，**冇上架任何擴充功能商店**。你可以自己建置，或者喺[發行版頁面](https://github.com/Takina610/BewlyBewly-Euphonium/releases)單撈打包好嘅建置。
+
+### 由原始碼建置
+
+```bash
+bun install
+
+bun run build          # Chromium 系瀏覽器 -> extension/
+bun run build-firefox  # Firefox 系瀏覽器  -> extension-firefox/
+```
+
+### 載入未打包嘅擴充功能
+
+- Chromium 系瀏覽器（Chrome、Edge、Brave 等）：開 `chrome://extensions`，開「開發人員模式」，撳「載入未封裝項目」，揀 `extension` 資料夾。
+- Firefox 系瀏覽器：開 `about:debugging#/runtime/this-firefox`，撳「載入臨時附加元件」，揀 `extension-firefox/manifest.json`。
 
 ## 介紹
 
-<!-- 我真係好想自殺。好痛苦。-->
-<!-- Sorry for my bad Cantonese. -->
-
 > [!IMPORTANT]
-> BewlyBewly! Ave Mujica 主要着重頁面調整同埋改善，而唔係完善功能同提升效率
+> BewlyBewly! Euphonium 主要着重頁面調整同埋改善，而唔係完善功能同提升效率
 >
 > 事關考慮到維護嘅效率同埋難度，深色模式淨係會適應常用頁面，一啲冇咁常用嘅頁面唔會適應調整
 
 > [!IMPORTANT]
-> BewlyBewly! Ave Mujica 係 [BewlyBewly](https://github.com/BewlyBewly/BewlyBewly) [v0.40.6](https://github.com/BewlyBewly/BewlyBewly/releases/tag/v0.40.6) 嘅一個 fork（分叉），目的係原專案封存之後提供其他更新同埋錯誤修復。
+> BewlyBewly! Euphonium 係 [BewlyBewly! Ave Mujica](https://github.com/VentusUta/BewlyBewly-AveMujica) 嘅一個私人分叉版本，而佢係 [BewlyBewly](https://github.com/BewlyBewly/BewlyBewly) [v0.40.6](https://github.com/BewlyBewly/BewlyBewly/releases/tag/v0.40.6) 嘅一個 fork（分叉），目的係原專案封存之後提供其他更新同埋錯誤修復。
 
-BewlyBewly! Ave Mujica 係一個用於 bilibili 嘅瀏覽器延伸功能，目的係透過重新設計 bilibili 嘅 UI 令到用戶體驗提升。設計靈感源於 YouTube、Vision OS 同 iOS，從而實現更具視覺吸引力同用戶友好嘅介面。
+BewlyBewly! Euphonium 係一個用於 bilibili 嘅瀏覽器延伸功能，目的係透過重新設計 bilibili 嘅 UI 令到用戶體驗提升。設計靈感源於 YouTube、Vision OS 同 iOS，從而實現更具視覺吸引力同用戶友好嘅介面。
 
 呢個專案係用咗 [vitesse-webext](https://github.com/antfu/vitesse-webext) 範例進行開發。若果冇咗呢個範例，BewlyBewly 得個吉。
 
 ## 貢獻同建置專案
 
-見 [docs/CONTRIBUTING-jyut.md](https://github.com/VentusUta/BewlyBewly-AveMujica/blob/main/docs/CONTRIBUTING-jyut.md)
+見 [docs/CONTRIBUTING-jyut.md](https://github.com/Takina610/BewlyBewly-Euphonium/blob/main/docs/CONTRIBUTING-jyut.md)
 
 ## 鳴謝
 
 - [vitesse-webext](https://github.com/antfu/vitesse-webext)——專案所用嘅範例
+- [BewlyBewly! Ave Mujica](https://github.com/VentusUta/BewlyBewly-AveMujica)——本專案所基於嘅分叉
 - [UserScripts/bilibiliHome](https://github.com/indefined/UserScripts/tree/master/bilibiliHome)、[bilibili-app-recommend](https://github.com/magicdawn/bilibili-app-recommend)——參考取得 access key 之方法
 - [Bilibili-Evolved](https://github.com/the1812/Bilibili-Evolved)——部分功能嘅實現
 - [bilibili-API-collect](https://github.com/SocialSisterYi/bilibili-API-collect)

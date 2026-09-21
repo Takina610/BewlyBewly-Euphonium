@@ -78,7 +78,7 @@ function handleResetSettings() {
 }
 
 async function checkGitHubRelease() {
-  const apiUrl = `https://api.github.com/repos/VentusUta/BewlyBewly-AveMujica/releases/latest`
+  const apiUrl = `https://api.github.com/repos/Takina610/BewlyBewly-Euphonium/releases/latest`
 
   try {
     const response = await fetch(apiUrl)
@@ -102,14 +102,14 @@ async function checkGitHubRelease() {
 <template>
   <div>
     <div max-w-600px mx-auto>
-      <div relative w-200px m-auto>
+      <div relative w-240px m-auto>
         <img
-          :src="`${browser.runtime.getURL('/assets/bewly-ave-mujica-style-logo.svg')}`" alt="" width="200"
+          :src="`${browser.runtime.getURL('/assets/re_logo.png')}`" alt="" width="240"
         >
 
         <a
           v-if="hasNewVersion"
-          href="https://github.com/VentusUta/BewlyBewly-AveMujica/releases" target="_blank"
+          href="https://github.com/Takina610/BewlyBewly-Euphonium/releases" target="_blank"
           pos="absolute bottom-0 right-0" transform="translate-x-50%" un-text="xs $bew-text-1" p="y-1 x-2" bg="$bew-fill-1"
           rounded-12
         >
@@ -118,7 +118,7 @@ async function checkGitHubRelease() {
       </div>
       <section text-2xl text-center mt-2>
         <p flex="inline gap-2" fw-900>
-          <span>BewlyBewly&excl; Ave Mujica</span>
+          <span>BewlyBewly&excl; Euphonium</span>
           <span
             v-if="isDev"
             inline-block text="$bew-warning-color"
@@ -128,7 +128,7 @@ async function checkGitHubRelease() {
         </p>
         <p text-center>
           <a
-            href="https://github.com/VentusUta/BewlyBewly-AveMujica/releases" target="_blank"
+            href="https://github.com/Takina610/BewlyBewly-Euphonium/releases" target="_blank"
             un-text="sm color-$bew-text-2 hover:color-$bew-text-3"
           >
             v{{ version }}
@@ -145,17 +145,9 @@ async function checkGitHubRelease() {
           <h3 class="title">
             {{ $t('settings.links') }}
           </h3>
-          <div grid="~ xl:cols-5 lg:cols-4 md:cols-3 cols-2 gap-2">
+          <div grid="~ md:cols-3 cols-2 gap-2">
             <a
-              href="https://x.com/VentusUta" target="_blank"
-              class="link-card"
-              bg="black dark:white !opacity-10 !hover:opacity-20"
-              un-text="black dark:white"
-            >
-              <div i-tabler:brand-x /> X
-            </a>
-            <a
-              href="https://github.com/VentusUta/BewlyBewly-AveMujica" target="_blank"
+              href="https://github.com/Takina610/BewlyBewly-Euphonium" target="_blank"
               class="link-card"
               bg="black dark:white !opacity-10 !hover:opacity-20"
               un-text="black dark:white"
@@ -163,7 +155,7 @@ async function checkGitHubRelease() {
               <div i-tabler:brand-github /> GitHub
             </a>
             <a
-              href="https://github.com/VentusUta/BewlyBewly-AveMujica/wiki/Third-Party-Software-Licenses" target="_blank"
+              href="https://github.com/Takina610/BewlyBewly-Euphonium/blob/main/LICENSE" target="_blank"
               class="link-card"
               bg="black dark:white !opacity-10 !hover:opacity-20"
               un-text="black dark:white"
@@ -205,7 +197,13 @@ async function checkGitHubRelease() {
             问题反馈
           </h3>
           <div flex="~ gap-2">
-            请发邮件到ventusuta@gmail.com，或在GitHub上开启新issue。
+            请在GitHub上开启新issue：
+            <a
+              href="https://github.com/Takina610/BewlyBewly-Euphonium/issues" target="_blank"
+              un-text="color-$bew-theme-color hover:color-$bew-theme-color-80"
+            >
+              Takina610/BewlyBewly-Euphonium/issues
+            </a>
           </div>
         </section>
       </section>
@@ -214,7 +212,7 @@ async function checkGitHubRelease() {
           text-center
           un-text="sm color-$bew-text-2"
         >
-          <a href="https://github.com/VentusUta/BewlyBewly-AveMujica" un-text="sm color-$bew-text-2 hover:color-$bew-text-3">BewlyBewly&excl; Ave Mujica</a> based on <a href="https://github.com/BewlyBewly/BewlyBewly" un-text="sm color-$bew-text-2 hover:color-$bew-text-3">BewlyBewly</a> <a href="https://github.com/BewlyBewly/BewlyBewly/releases/tag/v0.40.6" un-text="sm color-$bew-text-2 hover:color-$bew-text-3">v0.40.6</a>
+          <a href="https://github.com/Takina610/BewlyBewly-Euphonium" un-text="sm color-$bew-text-2 hover:color-$bew-text-3">BewlyBewly&excl; Euphonium</a> based on <a href="https://github.com/BewlyBewly/BewlyBewly" un-text="sm color-$bew-text-2 hover:color-$bew-text-3">BewlyBewly</a> <a href="https://github.com/BewlyBewly/BewlyBewly/releases/tag/v0.40.6" un-text="sm color-$bew-text-2 hover:color-$bew-text-3">v0.40.6</a>, forked from <a href="https://github.com/VentusUta/BewlyBewly-AveMujica" un-text="sm color-$bew-text-2 hover:color-$bew-text-3">BewlyBewly&excl; Ave Mujica</a>
         </p>
       </section>
       <section mt-4>
@@ -243,7 +241,7 @@ async function checkGitHubRelease() {
 
           <div>
             <p mb-4>
-              BewlyBewly! Ave Mujica（以下简称“本扩展”）的功能依赖于多个哔哩哔哩私有API。
+              BewlyBewly! Euphonium（以下简称“本扩展”）的功能依赖于多个哔哩哔哩私有API。
             </p>
             <p mb-4>
               哔哩哔哩私有API受哔哩哔哩知识产权保护，使用本扩展可能违反《哔哩哔哩弹幕网用户使用协议》。

@@ -50,7 +50,7 @@ Do not use the `Co-Authored-By:` tag for the model in LLM-assisted commits; use 
 
 ### Versioning
 
-BewlyBewly! Ave Mujica version numbers follow the format `MAJOR.PATCH.MINIPATCH`, in use since 1.8.0; earlier versions used [SemVer](https://semver.org/).
+BewlyBewly! Euphonium version numbers follow the format `MAJOR.PATCH.MINIPATCH`, in use since 1.8.0; earlier versions used [SemVer](https://semver.org/).
 
 * `MAJOR`: the major version number, incremented by 1 for extremely significant changes (such as a complete rewrite);
 * `PATCH`: the patch number, incremented by 1 for changes that break backward compatibility or for major additions (a large amount of new code), roughly equivalent to `MAJOR` in SemVer;

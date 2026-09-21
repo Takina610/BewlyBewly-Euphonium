@@ -1,12 +1,12 @@
 {
-  "name": "bewlybewly-avemujica",
-  "displayName": "BewlyBewly! Ave Mujica",
+  "name": "bewlybewly-euphonium",
+  "displayName": "BewlyBewly! Euphonium",
   "type": "module",
   "version": "1.8.32",
   "private": true,
   "packageManager": "bun@1.4",
-  "description": "Just make a few small changes to your bilibili homepage.",
-  "homepage": "https://github.com/VentusUta/BewlyBewly-AveMujica",
+  "description": "Just make a few small changes to your bilibili homepage — a personal fork with Euphonium-flavoured branding.",
+  "homepage": "https://github.com/Takina610/BewlyBewly-Euphonium",
   "scripts": {
     "dev": "bun run clear && concurrently \"bun run dev:prepare\" \"bun run dev:web\" \"bun run dev:js\" \"bun run dev:bg\"",
     "dev-firefox": "bun run clear-firefox && cross-env NODE_ENV=development FIREFOX=true concurrently \"bun run dev:prepare\" \"bun run dev:web\" \"bun run dev:js\" \"bun run dev:bg\"",

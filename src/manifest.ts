@@ -134,7 +134,7 @@ export async function getManifest() {
   if (isFirefox) {
     manifest.browser_specific_settings = {
       gecko: {
-        id: 'bewlybewlyavemujica@ventusuta.com',
+        id: 'bewlybewly-euphonium@takina610.github.io',
         // @ts-expect-error: Mozilla requires this property, but the linter is unhappy, ignore it for now.
         'data_collection_permissions': {
           'required': ['none'],

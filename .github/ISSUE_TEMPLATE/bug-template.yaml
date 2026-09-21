@@ -10,7 +10,7 @@ body:
 
         标题不填或直接随便写类似“bug”“错误”“有问题”简单带过的 issue 直接 close + lock 不解释，如果是旧版本的问题或是已经有人提问过的问题将会关闭。
 
-        功能请求不是在问题报告里面写的，请[开启空 issue](https://github.com/VentusUta/BewlyBewly-AveMujica/issues/new)。
+        功能请求不是在问题报告里面写的，请[开启空 issue](https://github.com/Takina610/BewlyBewly-Euphonium/issues/new)。
 
   - type: textarea
     attributes:
@@ -19,16 +19,16 @@ body:
       placeholder: |
         - 浏览器（如 Mozilla Firefox）：
         - 浏览器版本（如 140.0.4）：
-        - BewlyBewly! Ave Mujica 版本（如 v1.7.1）：
+        - BewlyBewly! Euphonium 版本（如 v1.7.1）：
 
-        如果你修改了 BewlyBewly! Ave Mujica 的设置，请写在下面以方便我們排查問題［可粗略写成类似“设置了××后出现这个问题”（将“××”替换为你的设置项）］：
+        如果你修改了 BewlyBewly! Euphonium 的设置，请写在下面以方便我們排查問題［可粗略写成类似“设置了××后出现这个问题”（将“××”替换为你的设置项）］：
 
       value: |
         - 浏览器（如 Mozilla Firefox）：
         - 浏览器版本（如 140.0.4）：
-        - BewlyBewly! Ave Mujica 版本（如 v1.7.1）：
+        - BewlyBewly! Euphonium 版本（如 v1.7.1）：
 
-        如果你修改了 BewlyBewly! Ave Mujica 的设置，请写在下面以方便我們排查問題［可粗略写成类似“设置了××后出现这个问题”（将“××”替换为你的设置项）］：
+        如果你修改了 BewlyBewly! Euphonium 的设置，请写在下面以方便我們排查問題［可粗略写成类似“设置了××后出现这个问题”（将“××”替换为你的设置项）］：
 
     validations:
       required: true
@@ -61,19 +61,19 @@ body:
       label: 最终确认
       description: 请确认以下所有内容，否则将被 close。
       options:
-        - label: 我确认在停用 BewlyBewly! Ave Mujica 并强制刷新（按住 Shift 键的同时按刷新键）后，问题不再出现。
+        - label: 我确认在停用 BewlyBewly! Euphonium 并强制刷新（按住 Shift 键的同时按刷新键）后，问题不再出现。
           required: false
         - label: 我确认此问题未在其他 issue 中出现过。
           required: false
         - label: 我确认我已阅读“[常見問題](https://github.com/VentusUta/BewlyBewly-AveMujica/wiki/%E5%B8%B8%E8%A7%81%E9%97%AE%E9%A2%98)”页面，其中没有对应我问题的解决方案。
           required: false
-        - label: 我确认我正在使用最新的 BewlyBewly! Ave Mujica 版本。
+        - label: 我确认我正在使用最新的 BewlyBewly! Euphonium 版本。
           required: false
 
   - type: checkboxes
     attributes:
       label: 作出贡献？
-      description: 【此选项非必选，如果你不晓得这里在说什么，请勿勾选。】我们欢迎任何人贡献代码，见 [CONTRIBUTING.md](https://github.com/VentusUta/BewlyBewly-AveMujica/blob/main/docs/CONTRIBUTING.md)。
+      description: 【此选项非必选，如果你不晓得这里在说什么，请勿勾选。】我们欢迎任何人贡献代码，见 [CONTRIBUTING.md](https://github.com/Takina610/BewlyBewly-Euphonium/blob/main/docs/CONTRIBUTING.md)。
       options:
         - label: 我将自行提交一个 PR 来解决此问题。
           required: false

@@ -53,7 +53,7 @@ bun run build-firefox
 
 ### 版本号
 
-BewlyBewly! Ave Mujica的版本号样式为`MAJOR.PATCH.MINIPATCH`，自1.8.0开始启用，此前版本使用[SemVer](https://semver.org/)。
+BewlyBewly! Euphonium的版本号样式为`MAJOR.PATCH.MINIPATCH`，自1.8.0开始启用，此前版本使用[SemVer](https://semver.org/)。
 
 * `MAJOR`：大版本号，极重大改动（如完全重写）时自增1；
 * `PATCH`：补丁号，不向下兼容或重大新增（加入大量代码）时自增1，约等于SemVer的`MAJOR`；

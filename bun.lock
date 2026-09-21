@@ -3,7 +3,7 @@
   "configVersion": 0,
   "workspaces": {
     "": {
-      "name": "bewlybewly-avemujica",
+      "name": "bewlybewly-euphonium",
       "dependencies": {
         "@types/md5": "2.3.5",
         "dompurify": "3.1.5",
