@@ -1,3 +1,15 @@
+// 首頁顯示 Bewly 頁面時，原版 B 站首頁的頂欄容器（.bili-header）仍留在 body 中當作佔位，
+// 而它帶著 .bili-header--large 的 background-color: var(--bg1)（暗色模式下 Bewly 會把 --bg1 映射成 --bew-bg）。
+// Bewly 的桌布繪製在 z-index: -1，會被這層不透明的底色蓋住，
+// 使頂部 --bew-top-bar-height 高的區域變成一條純黑橫帶、與桌布無法銜接。
+// 因此顯示 Bewly 背景時，讓它連同 body 一起透明（頂欄內容已由 remove-top-bar 隱藏）。
+html.has-custom-background.homePage {
+  body,
+  .bili-header {
+    background: transparent !important;
+  }
+}
+
 .bewly-design.homePage {
   .header-channel {
     // margin-top: 10px;
