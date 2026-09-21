@@ -65,19 +65,31 @@ jobs:
       - name: Build Chromium extension
         run: bun run build
 
-      - name: Upload zip
+      - name: Package Chromium extension
+        if: ${{ matrix.os == 'ubuntu-latest' }}
+        run: bun run pack:zip
+
+      - name: Upload Chromium extension
         if: ${{ matrix.os == 'ubuntu-latest' && github.ref_name == 'main' }}
         uses: actions/upload-artifact@v7
         with:
           name: extension
-          path: extension
+          path: |
+            extension
+            extension.zip
 
       - name: Build Firefox extension
         run: bun run build-firefox
 
-      - name: Upload zip
+      - name: Package Firefox extension
+        if: ${{ matrix.os == 'ubuntu-latest' }}
+        run: bun run pack:zip-firefox
+
+      - name: Upload Firefox extension
         if: ${{ matrix.os == 'ubuntu-latest' && github.ref_name == 'main' }}
         uses: actions/upload-artifact@v7
         with:
           name: extension-firefox
-          path: extension-firefox
+          path: |
+            extension-firefox
+            extension-firefox.zip

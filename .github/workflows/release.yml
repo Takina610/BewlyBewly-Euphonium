@@ -1,0 +1,75 @@
+name: Release
+
+on:
+  push:
+    tags:
+      # Tag a commit with e.g. `v1.8.33` to publish a release
+      # 为提交打上诸如 `v1.8.33` 的标签即可发布 Release
+      - 'v*'
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Tag to release (e.g. v1.8.33). Defaults to the version in package.json.
+        required: false
+        type: string
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    name: Build & release
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.4
+
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+
+      - name: Resolve release tag
+        id: version
+        run: |
+          if [ -n "${{ inputs.tag }}" ]; then
+            TAG="${{ inputs.tag }}"
+          elif [ "${{ github.ref_type }}" = "tag" ]; then
+            TAG="${{ github.ref_name }}"
+          else
+            TAG="v$(node -p 'require("./package.json").version')"
+          fi
+          echo "tag=$TAG" >> "$GITHUB_OUTPUT"
+          echo "Releasing $TAG"
+
+      - name: Build and package Chromium extension
+        run: |
+          bun run build
+          bun run pack:zip
+          test -f extension.zip
+
+      - name: Build and package Firefox extension
+        run: |
+          bun run build-firefox
+          bun run pack:zip-firefox
+          test -f extension-firefox.zip
+
+      - name: Publish release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG: ${{ steps.version.outputs.tag }}
+        run: |
+          if gh release view "$TAG" >/dev/null 2>&1; then
+            # A release for this tag already exists: refresh its assets
+            gh release upload "$TAG" extension.zip extension-firefox.zip --clobber
+          else
+            gh release create "$TAG" \
+              extension.zip \
+              extension-firefox.zip \
+              --title "$TAG" \
+              --generate-notes \
+              --target "${{ github.sha }}"
+          fi
