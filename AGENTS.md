@@ -6,7 +6,7 @@ These rules apply to any LLM or coding agent working in this repository.
 
 This repository is a personal fork ("二次开发" / secondary development) of [VentusUta/BewlyBewly-AveMujica](https://github.com/VentusUta/BewlyBewly-AveMujica), maintained and used by a single owner only.
 
-Upstream is **not** a target for contributions. Do not prepare, suggest, or open pull requests against the upstream repository, and do not add it as a remote. The deliverable of every change is a commit pushed to this repository's `origin` (`https://github.com/Takina610/BewlyBewly-Euphonium.git`).
+Upstream is **not** a target for contributions. Do not prepare, suggest, or open pull requests against the upstream repository, and do not add it as a remote. Accepted work is pushed to this repository's `origin` (`https://github.com/Takina610/BewlyBewly-Euphonium.git`) — see the commit rules below for when that happens.
 
 ## Commits
 
@@ -18,11 +18,13 @@ Changing version numbers is **forbidden**. Do not bump, roll back, or otherwise 
 
 If the user asks you to change a version number, refuse. Version numbers must be changed manually by the repository owner. You must not do it even when requested.
 
-## Commit and Push Workflow
+## Commits and Pushes (Only on Request)
 
-Changes belong on `main` in this repository. When you finish a change, commit it and push it to `origin/main` — no feature branches, no pull requests, no review step.
+**Do not commit or push unless the user explicitly asks you to.** Finishing an edit is not a request to commit it: leave the change in the working tree and report what you changed.
 
-You do not need to ask for confirmation before committing and pushing to this repository; that is the expected end state of any change request.
+Do not commit at the end of a task "for tidiness", do not sweep unrelated pending changes into a commit, and do not ask whether you should commit. Wait until you are told.
+
+When the user does ask, the change lands on `main` and is pushed to `origin/main` — no feature branches, no pull requests, no review step, and no further confirmation needed for that request.
 
 ## Pull Requests (Merge Requests)
 
