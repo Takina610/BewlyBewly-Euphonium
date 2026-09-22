@@ -6,6 +6,7 @@ import { useToast } from 'vue-toastification'
 import Button from '~/components/Button.vue'
 import { useBewlyApp } from '~/composables/useAppProvider'
 import { accessKey, settings } from '~/logic'
+import { slackingEffectiveLevel } from '~/logic/slackingMode'
 import type { VideoInfo } from '~/models/video/videoInfo'
 import type { VideoPreviewResult } from '~/models/video/videoPreview'
 import { useMainStore } from '~/stores/mainStore'
@@ -78,11 +79,20 @@ const mouseLeaveTimeOut = ref()
 const previewVideoUrl = ref<string>('')
 const videoElement = ref<HTMLVideoElement | null>(null)
 
+// Autoplaying previews are the largest source of on-screen motion in a list of cards, so slacking
+// mode turns them off without touching the user's own setting.
+const showVideoPreview = computed<boolean>(() => settings.value.enableVideoPreview && !settings.value.slackingMode)
+
+// Heavy mode reuses the horizontal layout the column-layout switcher already provides, so the card
+// becomes a thumbnail with the title beside it — a list row rather than a tile in a wall.
+const isSlackingCompact = computed<boolean>(() => slackingEffectiveLevel.value === 'heavy')
+const horizontalLayout = computed<boolean>(() => Boolean(props.horizontal) || isSlackingCompact.value)
+
 watch(() => isHover.value, async (newValue) => {
   if (!props.video || !newValue)
     return
 
-  if (props.showPreview && settings.value.enableVideoPreview
+  if (props.showPreview && showVideoPreview.value
     && !previewVideoUrl.value && (props.video.aid || props.video.bvid)) {
     let cid = props.video.cid
     if (!cid) {
@@ -268,6 +278,7 @@ provide('getVideoType', () => props.type!)
 
 <template>
   <div
+    :class="{ 'slacking-compact': isSlackingCompact }"
     content-visibility="auto"
     intrinsic-size-300px
     duration-300 ease-in-out
@@ -284,7 +295,7 @@ provide('getVideoType', () => props.type!)
         rounded="$bew-radius"
       >
         <ALink
-          :style="{ display: horizontal ? 'flex' : 'block', gap: horizontal ? '1.5rem' : '0' }"
+          :style="{ display: horizontalLayout ? 'flex' : 'block', gap: horizontalLayout ? '1.5rem' : '0' }"
           :href="videoUrl"
           type="videoCard"
           :custom-click-event="settings.videoCardLinkOpenMode === 'drawer'"
@@ -295,7 +306,7 @@ provide('getVideoType', () => props.type!)
           <!-- Cover -->
           <div
             class="group/cover"
-            :class="horizontal ? 'horizontal-card-cover' : 'vertical-card-cover'"
+            :class="horizontalLayout ? 'horizontal-card-cover' : 'vertical-card-cover'"
             shrink-0
             h-fit relative bg="$bew-skeleton" rounded="$bew-radius"
             cursor-pointer
@@ -306,6 +317,7 @@ provide('getVideoType', () => props.type!)
             <Picture
               :src="`${removeHttpFromUrl(video.cover)}@672w_378h_1c_!web-home-common-cover`"
               loading="eager"
+              :class="{ 'slacking-cover': settings.slackingMode }"
               w="full" max-w-full align-middle aspect-video object-cover
               rounded="$bew-radius"
             />
@@ -330,7 +342,7 @@ provide('getVideoType', () => props.type!)
             </div>
 
             <!-- Video preview -->
-            <Transition v-if="!removed && showPreview && settings.enableVideoPreview" name="fade">
+            <Transition v-if="!removed && showPreview && showVideoPreview" name="fade">
               <video
                 v-if="previewVideoUrl && isHover"
                 ref="videoElement"
@@ -451,14 +463,14 @@ provide('getVideoType', () => props.type!)
           <div
             v-if="!removed"
             :style="{
-              width: horizontal ? '100%' : 'unset',
-              marginTop: horizontal ? '0' : '1rem',
+              width: horizontalLayout ? '100%' : 'unset',
+              marginTop: horizontalLayout ? '0' : '1rem',
             }"
             flex="~"
           >
             <!-- Author Avatar -->
             <VideoCardAuthorAvatar
-              v-if="!horizontal && video.author"
+              v-if="!horizontalLayout && video.author"
               :author="video.author"
               :is-live="video.liveStatus === 1"
             />
@@ -490,12 +502,12 @@ provide('getVideoType', () => props.type!)
                 <!-- Author Avatar -->
                 <span
                   :style="{
-                    marginBottom: horizontal ? '0.5rem' : '0',
+                    marginBottom: horizontalLayout ? '0.5rem' : '0',
                   }"
                   flex="inline items-center"
                 >
                   <VideoCardAuthorAvatar
-                    v-if="horizontal && video.author"
+                    v-if="horizontalLayout && video.author"
                     :author="video.author"
                     :is-live="video.liveStatus === 1"
                   />
@@ -551,7 +563,7 @@ provide('getVideoType', () => props.type!)
     <!-- skeleton -->
     <VideoCardSkeleton
       v-if="skeleton"
-      :horizontal="horizontal"
+      :horizontal="horizontalLayout"
       important-mb-0
     />
 
@@ -585,5 +597,25 @@ provide('getVideoType', () => props.type!)
 
 .more-active {
   --uno: "opacity-100";
+}
+
+// Grayscale keeps the cover perfectly readable while removing the "wall of colourful thumbnails"
+// silhouette that reads as a video site from across the room.
+.slacking-cover {
+  filter: grayscale(1) brightness(0.92);
+}
+
+// Heavy mode: the card becomes a list row — a small thumbnail with the title beside it. The width
+// override has to out-specify `.horizontal-card-cover`, which is why it is nested rather than flat.
+.slacking-compact {
+  margin-bottom: 0.5rem;
+
+  .horizontal-card-cover {
+    --uno: "xl:w-120px lg:w-120px md:w-120px w-110px";
+  }
+
+  .keep-two-lines {
+    font-size: 0.95rem;
+  }
 }
 </style>

@@ -330,4 +330,7 @@ export function setupNecessarySettingsWatchers() {
     },
     { immediate: true },
   )
+
+  // Slacking mode's classes are not watched here: `setupEarlySlackingMode` starts applying them from
+  // the content script at `document_start`, which this file only reaches once the app has mounted.
 }

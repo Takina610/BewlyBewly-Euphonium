@@ -4,6 +4,7 @@ import { isVideoOrBangumiPage } from '~/utils/main'
 
 import SettingsItem from '../../components/SettingsItem.vue'
 import SettingsItemGroup from '../../components/SettingsItemGroup.vue'
+import SlackingNotice from '../../components/SlackingNotice.vue'
 
 watch(() => settings.value.legacyPlayerLoadingScreen, () => {
   if (isVideoOrBangumiPage())
@@ -13,9 +14,18 @@ watch(() => settings.value.legacyPlayerLoadingScreen, () => {
 
 <template>
   <div>
-    <SettingsItemGroup :title="$t('settings.group_video_page')">
+    <!--
+      Slacking mode takes this page's appearance over: it hides the video page background and forces
+      the frosted glass off. Rather than leaving the rest of the controls there to be poked at, the
+      whole tab is replaced by the explanation while the mode runs — same treatment as Appearance.
+    -->
+    <SlackingNotice v-if="settings.slackingMode" desc-key="settings.slacking_notice_desc_video_page" />
+
+    <SettingsItemGroup v-else :title="$t('settings.group_video_page')">
       <!-- 控制视频页背景的开关 -->
-      <SettingsItem :title="$t('settings.show_video_page_background')" :desc="$t('settings.show_video_page_background_desc')">
+      <SettingsItem
+        :title="$t('settings.show_video_page_background')" :desc="$t('settings.show_video_page_background_desc')"
+      >
         <Radio v-model="settings.showVideoPageBackground" />
       </SettingsItem>
 

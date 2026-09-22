@@ -1,0 +1,110 @@
+// 摸魚模式 (Slacking mode) — the parts that live in bilibili's own markup, plus the heavy-level rules
+// that have to out-specify our own components.
+//
+// Our own UI is rendered inside a shadow root, so nothing here can reach it except through the
+// `:host()` form. The mode is driven by the `slacking-mode` / `slacking-heavy` classes that
+// `src/logic/slackingMode.ts` puts on <html> and on the `#bewly` host.
+
+.bewly-design.slacking-mode {
+  // Covers are the largest source of saturated colour on the page. Grayscale keeps them perfectly
+  // readable while removing the "wall of colourful thumbnails" that reads as a video site from
+  // across the room.
+  .bili-video-card img,
+  .recommend-list-v1 img {
+    filter: grayscale(1) brightness(0.92);
+  }
+
+  // Freeze decorative motion. Durations are shortened rather than removed so that `transitionend`
+  // still fires for bilibili's own scripts.
+  * {
+    transition-duration: 0.01s !important;
+    transition-delay: 0s !important;
+  }
+}
+
+.bewly-design.slacking-mode.slacking-hide-danmaku {
+  // Danmaku is the most bilibili-specific thing on screen: dozens of small moving text runs, and
+  // nothing else on the web looks like it. `.bili-danmaku-x-dm` is the danmaku item class.
+  .bili-danmaku-x-dm,
+  .bpx-player-dm-wrap,
+  #danmukuBox.danmaku-box,
+  .danmaku-wrap,
+  .bpx-player-dm-function {
+    display: none !important;
+  }
+}
+
+// The search page settings write the chosen wallpaper straight onto <html> as an inline style
+// (`Settings/BewlyPages/SearchPage/SearchPage.vue`), which `AppBackground`'s v-if cannot reach — so
+// without this the wallpaper would stay on the document root, dimmed but plainly visible. An
+// `!important` author rule is what it takes to out-rank an inline style.
+:root.slacking-mode {
+  background-image: none !important;
+}
+
+// #region The dim layer
+//
+// A stylesheet rule rather than a rendered element, so it is in place the moment the class lands —
+// before the first paint, and long before the Vue app mounts. `--bew-slacking-dim-alpha` carries the
+// strength (already adjusted for the level, and zeroed inside frames, where the enclosing page dims
+// for us).
+//
+// A plain overlay rather than a `filter` on the page: a filter on an ancestor turns it into the
+// containing block for every `position: fixed` descendant, which breaks bilibili's own sticky
+// headers and player chrome — the same trap the force-dark style hit.
+//
+// `z-index: 98` sits below our own chrome (dock `z-100`, top bar `z-99`, settings `z-10002`), so the
+// controls you are actually using stay at full brightness while the page underneath is dimmed.
+:root.slacking-mode::after {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: 98;
+  pointer-events: none;
+  background: rgb(0 0 0 / var(--bew-slacking-dim-alpha, 0));
+}
+// #endregion
+
+// #region Heavy level
+//
+// Heavy mode lines the video and rearranges the card walls. The rearrange rules need `:host()`:
+// they override scoped component styles inside the shadow root, which a plain class selector cannot
+// reliably beat (same specificity, source order decides — not something we control).
+
+.bewly-design.slacking-heavy {
+  // A grey wash over the main player. `#bilibili-player` is the whitelist the rounded-player style
+  // already relies on to mean "the real player", so the small hover-preview players embedded in
+  // card lists and the user-space page are untouched.
+  //
+  // The video element itself is deliberately left alone: any `filter` on it (including via a parent)
+  // can cost the browser its hardware-accelerated playback path, and the whole point of this
+  // feature is not to make the page stutter. A plain overlay composites for free.
+  #bilibili-player .bpx-player-video-area {
+    position: relative;
+
+    &::after {
+      content: "";
+      position: absolute;
+      inset: 0;
+      z-index: 10;
+      pointer-events: none;
+      background: rgb(105 110 120 / var(--bew-slacking-video-dim, 0.35));
+    }
+  }
+}
+
+// The card walls: a 5-column grid on a wide screen is the shape that says "video site". Collapsing
+// them to a single column turns the page into a list of rows, which is a shape no video site has.
+//
+// Scoped to `main` on purpose: the page content lives there, while the settings dialog, the top bar
+// and its popups are siblings of it. Without the scope this would also re-lay-out our own chrome —
+// the wallpaper picker and the contributor grid are both `cols-` grids.
+:host(#bewly.slacking-heavy) main {
+  .grid-adaptive,
+  .grid-two-columns,
+  *[grid*="cols-"] {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 0.75rem;
+  }
+}
+// #endregion

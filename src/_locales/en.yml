@@ -66,6 +66,7 @@ settings:
   menu_video_page: Video Page
   menu_compatibility: Compatibility
   menu_bilibili_settings: bilibili Settings
+  menu_slacking: Slacking Mode
   menu_about: About
 
   # Settings group
@@ -92,6 +93,11 @@ settings:
   group_search_page_mode: Search Page Mode
   group_home_tabs: Home Tabs
   group_video_page: Video Page Settings
+  group_slacking: Slacking Mode
+  group_slacking_desc: Makes bilibili look like a plain, motionless work page at a glance, so that a passer-by cannot tell what you are watching. Your theme colours stay as they are — the page is dimmed, not repainted.
+  group_slacking_trigger: How to toggle
+  group_slacking_content: Dimming & Content
+  group_slacking_disguise: Tab disguise
 
   # Settings buttons
   btn:
@@ -294,6 +300,52 @@ settings:
   follow_bilibili_evolved_color: Follow the Bilibili Evolved theme color
   follow_bilibili_evolved_color_desc: After changing the theme color in Bilibili Evolved, you will need to re-select this option in order to update the theme color.
 
+  # Slacking mode (摸鱼模式)
+  slacking_mode: Slacking mode
+  slacking_mode_desc: >
+    Dims the page, hides the wallpaper, flattens the frosted glass, greys out the covers, stops hover previews and hides danmaku. Your theme colours are left untouched.
+  slacking_level: Level
+  slacking_level_opt:
+    light: Light
+    heavy: Heavy
+  slacking_level_desc: >
+    Light keeps every layout as it is. Heavy additionally turns the card walls into a compact list and lays a grey wash over the video, so nothing on screen is left colourful or video-shaped.
+  slacking_level_shortcut: Heavy shortcut
+  slacking_level_shortcut_desc: >
+    Press it to go straight to heavy, switching the mode on first if it is off. Press it again to go back to light.
+  slacking_dim_intensity: Dim intensity
+  slacking_dim_intensity_desc: >
+    How much the page is darkened while the mode is on. This is where most of the hiding actually happens — the page keeps all of its colours and its layout, it is simply darker.
+  slacking_video_dim_intensity: Video wash intensity
+  slacking_video_dim_intensity_desc: >
+    How much grey is laid over the player in heavy mode. A moving, vivid picture is the strongest evidence of what you are doing, so washing it out is what stops the video from standing out. The player and its controls stay exactly where they are.
+  slacking_notice_title: Slacking mode is on
+  slacking_notice_desc: >
+    It takes over the wallpaper and the gradient background, so this page is hidden entirely while the mode is on — your settings are kept. Turn the mode off to change your appearance settings.
+  slacking_notice_desc_search_page: >
+    It hides every background image, so this page is hidden entirely while the mode is on — your settings are kept. Turn the mode off to change the search page's appearance.
+  slacking_notice_desc_performance: >
+    It flattens the frosted glass by design, so those two options are hidden for now. Disabling shadows is unaffected and still works.
+  slacking_notice_desc_video_page: >
+    It hides the video page background, so this page is hidden entirely while the mode is on — your settings are kept. Turn the mode off to change the video page's appearance.
+  slacking_notice_disable: Turn off slacking mode
+  slacking_notice_configure: Slacking mode settings
+  slacking_disguise_title: Disguise the tab title and icon
+  slacking_disguise_title_desc: >
+    Rewrites the tab title and favicon to a plain work-like name. Without this, the tab bar, the taskbar preview and Alt-Tab all keep showing bilibili.
+  slacking_window_title: Title text
+  slacking_window_title_default: Data Analysis Report
+  slacking_window_title_desc: >
+    Leave empty to use the default name. A number is appended automatically ("#3") so that you can still tell your own tabs apart.
+  slacking_shortcut: Toggle shortcut
+  slacking_shortcut_desc: >
+    Click and press the key combination. Click <kbd>Backspace</kbd> to clear it, or <kbd>Esc</kbd> to cancel.
+  slacking_shortcut_recording: Press a key combination…
+  slacking_shortcut_empty: Not set
+  slacking_hide_danmaku: Hide danmaku
+  slacking_hide_danmaku_desc: >
+    Danmaku is the most bilibili-specific thing on screen, so it is hidden by default. Turn this off if you would rather keep it.
+
   # bilibili Settings
   content_block_settings: Content Block
   block_ads: Block ads
@@ -434,6 +486,7 @@ dock:
   dark_mode: Dark Mode
   light_mode: Light Mode
   settings: Settings
+  slacking_mode: Slacking Mode
 
 video_card:
   operation:

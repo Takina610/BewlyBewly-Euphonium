@@ -7,6 +7,7 @@ import { useDark } from '~/composables/useDark'
 import { BEWLY_MOUNTED } from '~/constants/globalEvents'
 import { settings } from '~/logic'
 import { setupApp } from '~/logic/common-setup'
+import { setupEarlySlackingMode } from '~/logic/slackingMode'
 import RESET_BEWLY_CSS from '~/styles/reset.css?raw'
 import { runWhenIdle } from '~/utils/lazyLoad'
 import { compareVersions, injectCSS, isHomePage, isInIframe, isNotificationPage, isVideoOrBangumiPage } from '~/utils/main'
@@ -146,6 +147,11 @@ if (isSupportedPages() || isSupportedIframePages() || isStylesOnlyPage) {
   else {
     document.documentElement.classList.remove('bewly-design')
   }
+
+  // Started here rather than when the app mounts: the app waits for `DOMContentLoaded` — or, on most
+  // pages, for an idle callback — by which time the page has already painted in its normal colours.
+  // The classes are applied as soon as the settings finish loading, so there is no flash to hide.
+  setupEarlySlackingMode()
 }
 
 if (settings.value.adaptToOtherPageStyles && isHomePage()) {

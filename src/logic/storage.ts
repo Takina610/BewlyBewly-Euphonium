@@ -117,6 +117,23 @@ export interface Settings {
   useOriginalBilibiliTopBar: boolean
   useOriginalBilibiliHomepage: boolean
 
+  // Slacking mode (摸鱼模式)
+  slackingMode: boolean
+  /** How far the mode goes: `light` keeps the layout as it is, `heavy` also rearranges it. */
+  slackingLevel: 'light' | 'heavy'
+  /** How much to dim the page while slacking mode is on, as a percentage of black. */
+  slackingDimIntensity: number
+  /** How much grey wash to lay over the video in heavy mode, as a percentage. */
+  slackingVideoDimIntensity: number
+  slackingDisguiseTitle: boolean
+  /** Base text used to disguise the tab title. Falls back to a localized default when empty. */
+  slackingWindowTitle: string
+  /** Shortcut that toggles slacking mode, e.g. `Alt+Q`. Empty disables the shortcut. */
+  slackingShortcut: string
+  /** Shortcut that engages heavy mode directly, e.g. `Alt+S`. Empty disables the shortcut. */
+  slackingLevelShortcut: string
+  slackingHideDanmaku: boolean
+
   blockAds: boolean
   blockTopSearchPageAds: boolean
   blockVIPDanmukuStyle: boolean
@@ -235,6 +252,17 @@ export const originalSettings: Settings = {
   useOriginalBilibiliTopBar: false,
   useOriginalBilibiliHomepage: false,
 
+  // Slacking mode (摸鱼模式)
+  slackingMode: false,
+  slackingLevel: 'light',
+  slackingDimIntensity: 40,
+  slackingVideoDimIntensity: 35,
+  slackingDisguiseTitle: true,
+  slackingWindowTitle: '',
+  slackingShortcut: 'Alt+Q',
+  slackingLevelShortcut: 'Alt+S',
+  slackingHideDanmaku: true,
+
   // bilibili settings
   blockAds: true,
   blockTopSearchPageAds: true,
@@ -261,3 +289,9 @@ export const sidePanel = useStorageLocal('sidePanel', ref<{
 }>({
   home: true,
 }), { mergeDefaults: true })
+
+/**
+ * Monotonic counter used to number the disguised tab titles ("report #3"), so that
+ * several disguised tabs can still be told apart by the user.
+ */
+export const slackingTitleSeq = useStorageLocal('slackingTitleSeq', 0)

@@ -12,6 +12,10 @@ const props = defineProps<{ activatedPage: AppPage }>()
 const { isDark } = useDark()
 const { getActivatedCover } = useMainStore()
 
+// A wallpaper — and especially a theme-colored gradient — is one of the loudest "this is my
+// personal space" signals on screen, so slacking mode takes it over entirely.
+const showBackground = computed<boolean>(() => !settings.value.slackingMode)
+
 const currentActivatedCover = ref<string>('')
 const isBlurredCoverLoaded = ref<boolean>(false)
 
@@ -86,7 +90,7 @@ function setAppWallpaperMaskingOpacity() {
 </script>
 
 <template>
-  <div>
+  <div v-if="showBackground">
     <!-- linear gradient background -->
     <Transition name="fade">
       <div

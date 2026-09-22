@@ -67,6 +67,7 @@ settings:
   menu_about: 關於
   menu_compatibility: 相容性
   menu_bilibili_settings: bilibili 設定
+  menu_slacking: 摸魚模式
 
   # Settings group
   group_common: 常用
@@ -90,6 +91,11 @@ settings:
   group_search_page_mode: 搜尋頁模式
   group_home_tabs: 首頁標籤欄
   group_video_page: 影片頁設定
+  group_slacking: 摸魚模式
+  group_slacking_desc: 讓別人從旁邊一眼掃過去，看不出你在看什麼、也看不出你在娛樂。你的主題配色不會被改動——整頁只是變暗，不是換色。
+  group_slacking_trigger: 怎麼切換
+  group_slacking_content: 加暗與內容
+  group_slacking_disguise: 分頁偽裝
 
   # Settings buttons
   btn:
@@ -290,6 +296,52 @@ settings:
   follow_bilibili_evolved_color: 使用 Bilibili Evolved 主題色
   follow_bilibili_evolved_color_desc: 每次變更 Bilibili Evolved 主題色後，記得重新選取此選項以更新配置。
 
+  # 摸魚模式
+  slacking_mode: 摸魚模式
+  slacking_mode_desc: >
+    整頁變暗、隱藏背景圖片、關掉毛玻璃、封面灰化、關掉懸停預覽並隱藏彈幕。你的主題配色不會被改動。
+  slacking_level: 偽裝級別
+  slacking_level_opt:
+    light: 輕偽裝
+    heavy: 重偽裝
+  slacking_level_desc: >
+    輕偽裝保持所有佈局原樣。重偽裝在此之上把卡片牆壓成緊湊列表，並給影片本體蓋一層灰，讓畫面上不留任何高飽和的東西、也不留影片網站的形狀。
+  slacking_level_shortcut: 重偽裝快速鍵
+  slacking_level_shortcut_desc: >
+    按下直接進入重偽裝（模式沒開時會一併開啓）。再按一次回到輕偽裝。
+  slacking_dim_intensity: 加暗強度
+  slacking_dim_intensity_desc: >
+    開啓期間頁面變暗的程度，絕大部分的「不顯眼」都是靠它做到的——頁面的配色和佈局都原樣保留，只是變暗了。
+  slacking_video_dim_intensity: 影片灰化強度
+  slacking_video_dim_intensity_desc: >
+    重偽裝時蓋在播放器上的灰有多重。正在播放的鮮豔畫面是「你在幹什麼」最強的證據，把它灰掉才能讓影片不再搶眼。播放器和控件都保持原位不動。
+  slacking_notice_title: 摸魚模式已開啓
+  slacking_notice_desc: >
+    它會接管背景圖片和主題色漸層背景，所以開啓期間這一頁被整個隱藏了（你的設定都還保留著）。想改外觀，先把摸魚模式關掉。
+  slacking_notice_desc_search_page: >
+    它會隱藏所有背景圖片，所以開啓期間這一頁被整個隱藏了（你的設定都還保留著）。想改搜尋頁的外觀，先把摸魚模式關掉。
+  slacking_notice_desc_performance: >
+    它按設計會把毛玻璃關掉，所以這兩項暫時隱藏了。「停用陰影」不受影響，仍然可以設定。
+  slacking_notice_desc_video_page: >
+    它會隱藏影片頁背景，所以開啓期間這一頁被整個隱藏了（你的設定都還保留著）。想改影片頁的外觀，先把摸魚模式關掉。
+  slacking_notice_disable: 關閉摸魚模式
+  slacking_notice_configure: 摸魚模式設定
+  slacking_disguise_title: 偽裝分頁標題和圖示
+  slacking_disguise_title_desc: >
+    把分頁標題和 favicon 換成一個像工作內容的名字。不開這個的話，分頁欄、工作列懸停預覽和 Alt-Tab 裡都還寫著 bilibili。
+  slacking_window_title: 標題文字
+  slacking_window_title_default: 資料分析日報
+  slacking_window_title_desc: >
+    留空則使用預設名稱。名稱後面會自動帶一個編號（如「#3」），方便你自己分辨多個分頁。
+  slacking_shortcut: 切換快速鍵
+  slacking_shortcut_desc: >
+    點擊後直接按下組合鍵。按 <kbd>Backspace</kbd> 清空，按 <kbd>Esc</kbd> 取消。
+  slacking_shortcut_recording: 請按下組合鍵……
+  slacking_shortcut_empty: 未設定
+  slacking_hide_danmaku: 隱藏彈幕
+  slacking_hide_danmaku_desc: >
+    彈幕是畫面上最有 bilibili 特徵的東西，所以預設隱藏。想留著就關掉這一項。
+
   # bilibili Settings
   content_block_settings: 內容封鎖
   block_ads: 封鎖廣告
@@ -428,6 +480,7 @@ dock:
   dark_mode: 深色模式
   light_mode: 淺色模式
   settings: 設定
+  slacking_mode: 摸魚模式
 
 video_card:
   operation:

@@ -7,6 +7,7 @@ import { settings } from '~/logic'
 import ChangeWallpaper from '../components/ChangeWallpaper.vue'
 import SettingsItem from '../components/SettingsItem.vue'
 import SettingsItemGroup from '../components/SettingsItemGroup.vue'
+import SlackingNotice from '../components/SlackingNotice.vue'
 
 const { t } = useI18n()
 
@@ -73,69 +74,78 @@ function changeWallpaper(url: string) {
 
 <template>
   <div>
-    <SettingsItemGroup :title="$t('settings.group_color')">
-      <SettingsItem :title="$t('settings.theme')">
-        <Select v-model="settings.theme" w-full :options="themeOptions" />
-      </SettingsItem>
-      <SettingsItem :title="$t('settings.theme_color')">
-        <div flex="~ gap-2 wrap" justify-end>
-          <div
-            v-for="color in themeColorOptions" :key="color"
-            w-20px h-20px rounded-8 cursor-pointer transition
-            duration-300 box-border
-            :style="{
-              background: color,
-              transform: color === settings.themeColor ? 'scale(1.3)' : 'scale(1)',
-              border: color === settings.themeColor ? '2px solid white' : '2px solid transparent',
-              boxShadow: color === settings.themeColor ? '0 0 0 1px var(--bew-border-color), var(--bew-shadow-1)' : 'none',
-            }"
-            @click="changeThemeColor(color)"
-          />
-          <div
-            w-20px h-20px rounded-8 overflow-hidden
-            cursor-pointer transition duration-300
-            flex="~ items-center justify-center"
-            :style="{
-              transform: isCustomColor ? 'scale(1.3)' : 'scale(1)',
-              border: isCustomColor ? '2px solid white' : `2px solid ${settings.themeColor}`,
-              boxShadow: isCustomColor ? '0 0 0 1px var(--bew-border-color), var(--bew-shadow-1)' : 'none',
-            }"
-          >
+    <!--
+      Slacking mode hides the wallpaper and the gradient background, and takes the frosted glass over
+      as well. Rather than leaving the controls there to be poked at with no visible result, the whole
+      page is replaced by the explanation until the mode is turned off.
+    -->
+    <SlackingNotice v-if="settings.slackingMode" />
+
+    <template v-else>
+      <SettingsItemGroup :title="$t('settings.group_color')">
+        <SettingsItem :title="$t('settings.theme')">
+          <Select v-model="settings.theme" w-full :options="themeOptions" />
+        </SettingsItem>
+        <SettingsItem :title="$t('settings.theme_color')">
+          <div flex="~ gap-2 wrap" justify-end>
             <div
-              i-mingcute:color-picker-line pos="absolute" text-white w-12px h-12px
-              pointer-events-none
+              v-for="color in themeColorOptions" :key="color"
+              w-20px h-20px rounded-8 cursor-pointer transition
+              duration-300 box-border
+              :style="{
+                background: color,
+                transform: color === settings.themeColor ? 'scale(1.3)' : 'scale(1)',
+                border: color === settings.themeColor ? '2px solid white' : '2px solid transparent',
+                boxShadow: color === settings.themeColor ? '0 0 0 1px var(--bew-border-color), var(--bew-shadow-1)' : 'none',
+              }"
+              @click="changeThemeColor(color)"
             />
-            <input
-              :value="settings.themeColor"
-              type="color"
-              w-30px h-30px p-0 m-0 block
-              shrink-0 rounded-8 border-none cursor-pointer
-              @input="(e) => changeThemeColorThrottle((e.target as HTMLInputElement)?.value)"
+            <div
+              w-20px h-20px rounded-8 overflow-hidden
+              cursor-pointer transition duration-300
+              flex="~ items-center justify-center"
+              :style="{
+                transform: isCustomColor ? 'scale(1.3)' : 'scale(1)',
+                border: isCustomColor ? '2px solid white' : `2px solid ${settings.themeColor}`,
+                boxShadow: isCustomColor ? '0 0 0 1px var(--bew-border-color), var(--bew-shadow-1)' : 'none',
+              }"
             >
+              <div
+                i-mingcute:color-picker-line pos="absolute" text-white w-12px h-12px
+                pointer-events-none
+              />
+              <input
+                :value="settings.themeColor"
+                type="color"
+                w-30px h-30px p-0 m-0 block
+                shrink-0 rounded-8 border-none cursor-pointer
+                @input="(e) => changeThemeColorThrottle((e.target as HTMLInputElement)?.value)"
+              >
+            </div>
           </div>
-        </div>
-      </SettingsItem>
+        </SettingsItem>
 
-      <SettingsItem :title="$t('settings.gradient_theme_color_background')">
-        <Radio v-model="settings.useLinearGradientThemeColorBackground" />
-      </SettingsItem>
-    </SettingsItemGroup>
+        <SettingsItem :title="$t('settings.gradient_theme_color_background')">
+          <Radio v-model="settings.useLinearGradientThemeColorBackground" />
+        </SettingsItem>
+      </SettingsItemGroup>
 
-    <ChangeWallpaper type="global" />
+      <ChangeWallpaper type="global" />
 
-    <SettingsItemGroup>
-      <SettingsItem :title="$t('settings.customize_css')">
-        <Radio v-model="settings.customizeCSS" />
-        <template #desc>
-          <span text="$bew-error-color">
-            {{ $t('settings.customize_css_desc') }}
-          </span>
-        </template>
-        <template v-if="settings.customizeCSS" #bottom>
-          <CodeEditor v-model="settings.customizeCSSContent" language="css" @keydown.stop.passive="() => {}" />
-        </template>
-      </SettingsItem>
-    </SettingsItemGroup>
+      <SettingsItemGroup>
+        <SettingsItem :title="$t('settings.customize_css')">
+          <Radio v-model="settings.customizeCSS" />
+          <template #desc>
+            <span text="$bew-error-color">
+              {{ $t('settings.customize_css_desc') }}
+            </span>
+          </template>
+          <template v-if="settings.customizeCSS" #bottom>
+            <CodeEditor v-model="settings.customizeCSSContent" language="css" @keydown.stop.passive="() => {}" />
+          </template>
+        </SettingsItem>
+      </SettingsItemGroup>
+    </template>
   </div>
 </template>
 

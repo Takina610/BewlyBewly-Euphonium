@@ -5,6 +5,7 @@ import { settings } from '~/logic'
 
 import SettingsItem from '../components/SettingsItem.vue'
 import SettingsItemGroup from '../components/SettingsItemGroup.vue'
+import SlackingNotice from '../components/SlackingNotice.vue'
 
 const { t, locale } = useI18n()
 
@@ -149,15 +150,22 @@ watch(() => settings.value.language, (newValue) => {
     </SettingsItemGroup>
 
     <SettingsItemGroup :title="$t('settings.group_performance')">
-      <SettingsItem :title="$t('settings.disable_frosted_glass')">
-        <Radio v-model="settings.disableFrostedGlass" />
-      </SettingsItem>
-      <SettingsItem
-        v-if="!settings.disableFrostedGlass"
-        :title="$t('settings.reduce_frosted_glass_blur')"
-      >
-        <Radio v-model="settings.reduceFrostedGlassBlur" />
-      </SettingsItem>
+      <!-- Slacking mode forces the frosted glass off, so those options are hidden rather than shown -->
+      <!-- working nothing. `disable_shadow` is unaffected and stays reachable. -->
+      <SlackingNotice v-if="settings.slackingMode" desc-key="settings.slacking_notice_desc_performance" />
+
+      <template v-if="!settings.slackingMode">
+        <SettingsItem :title="$t('settings.disable_frosted_glass')">
+          <Radio v-model="settings.disableFrostedGlass" />
+        </SettingsItem>
+        <SettingsItem
+          v-if="!settings.disableFrostedGlass"
+          :title="$t('settings.reduce_frosted_glass_blur')"
+        >
+          <Radio v-model="settings.reduceFrostedGlassBlur" />
+        </SettingsItem>
+      </template>
+
       <SettingsItem :title="$t('settings.disable_shadow')">
         <Radio v-model="settings.disableShadow" />
       </SettingsItem>

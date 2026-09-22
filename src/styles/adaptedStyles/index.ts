@@ -1,5 +1,6 @@
 import './common'
 import './shadowDom'
+import './slackingMode.scss'
 import './thirdParties'
 
 import { settings } from '~/logic/storage'

@@ -19,11 +19,16 @@ const settingsMenu = {
   [MenuType.BewlyPages]: defineAsyncComponent(() => import('./BewlyPages/BewlyPages.vue')),
   [MenuType.Compatibility]: defineAsyncComponent(() => import('./Compatibility/Compatibility.vue')),
   [MenuType.BilibiliSettings]: defineAsyncComponent(() => import('./BilibiliSettings/BilibiliSettings.vue')),
+  [MenuType.Slacking]: defineAsyncComponent(() => import('./Slacking/Slacking.vue')),
   [MenuType.About]: defineAsyncComponent(() => import('./About/About.vue')),
 }
 const activatedMenuItem = ref<MenuType>(MenuType.General)
 const title = ref<string>(t('settings.title'))
 const settingsWindow = ref<HTMLDivElement>()
+
+// Lets a tab (or anything rendered inside one) switch to another tab, so a notice can point the
+// user at the settings it is talking about.
+provide('changeSettingsMenuItem', changeMenuItem)
 
 createTransformer(settingsWindow, {
   x: '50%',
@@ -94,6 +99,12 @@ const settingsMenuItems = computed((): MenuItem[] => {
       icon: 'i-tabler:brand-bilibili',
       iconActivated: 'i-tabler:brand-bilibili',
       title: t('settings.menu_bilibili_settings'),
+    },
+    {
+      value: MenuType.Slacking,
+      icon: 'i-mingcute:eye-close-line',
+      iconActivated: 'i-mingcute:eye-close-fill',
+      title: t('settings.menu_slacking'),
     },
     {
       value: MenuType.About,

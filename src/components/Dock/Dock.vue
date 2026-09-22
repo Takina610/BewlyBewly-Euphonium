@@ -356,6 +356,22 @@ const dockTransformStyle = computed((): { transform: string, transformOrigin: st
           </button>
         </Tooltip>
 
+        <Tooltip :content="$t('dock.slacking_mode')" :placement="tooltipPlacement">
+          <button
+            class="dock-item group"
+            :class="{
+              active: settings.slackingMode,
+              inactive: hoveringDockItem.themeMode && isDark && !settings.slackingMode,
+            }"
+            @click="settings.slackingMode = !settings.slackingMode"
+          >
+            <div
+              :class="settings.slackingMode ? 'i-mingcute:eye-close-fill' : 'i-mingcute:eye-line'"
+              text-xl
+            />
+          </button>
+        </Tooltip>
+
         <Tooltip :content="$t('dock.settings')" :placement="tooltipPlacement">
           <button
             class="dock-item group"

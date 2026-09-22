@@ -296,6 +296,28 @@
   --bew-shadow-3: 0 0 0 transparent;
   --bew-shadow-4: 0 0 0 transparent;
 }
+
+// #region Slacking mode (摸鱼模式)
+// The visual take-over is deliberately narrow: a dim layer (see `App.vue`) plus the targeted
+// rules in `adaptedStyles/slackingMode.scss` do the actual hiding, and the user's palette is left
+// alone. The only thing overridden here is the frosted glass, which is what makes the UI look
+// "personalized" and is also the most expensive thing on screen to render.
+:host(#bewly.slacking-mode),
+:root.slacking-mode {
+  --bew-content-opacity: 1;
+  --bew-filter-glass-1: none;
+  --bew-filter-glass-2: none;
+  --bew-shadow-edge-glow-1: 0 0 0 transparent;
+  --bew-shadow-edge-glow-2: 0 0 0 transparent;
+  --bew-fill-alt: var(--bew-content-solid);
+}
+
+:host(#bewly.slacking-mode.dark),
+:root.slacking-mode.dark {
+  --bew-fill-alt: var(--bew-fill-1);
+}
+// #endregion
+
 :root.bewly-design,
 :root.bewly-design * {
   --brand_pink: var(--bew-theme-color);
