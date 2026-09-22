@@ -31,5 +31,16 @@ import SettingsItemGroup from '../components/SettingsItemGroup.vue'
         </SettingsItem>
       </SettingsItemGroup>
     </SettingsItemGroup>
+
+    <SettingsItemGroup :title="$t('settings.comment_settings')">
+      <SettingsItemGroup>
+        <SettingsItem :title="$t('settings.show_comment_ip_location')">
+          <Radio v-model="settings.showCommentIpLocation" />
+          <template #desc>
+            {{ $t('settings.show_comment_ip_location_desc') }}
+          </template>
+        </SettingsItem>
+      </SettingsItemGroup>
+    </SettingsItemGroup>
   </div>
 </template>

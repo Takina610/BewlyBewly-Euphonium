@@ -140,6 +140,11 @@ export interface Settings {
   cleanUrlArgument: boolean
   bvToAv: boolean
   legacyPlayerLoadingScreen: boolean
+  /**
+   * 在评论区每条评论的时间后面显示 IP 属地。属地本来就在 B 站接口返回的评论数据里
+   * （`reply_control.location`），网页端不渲染而已，打开后由主世界的注入脚本把它补到 DOM 上。
+   */
+  showCommentIpLocation: boolean
 }
 
 export const originalSettings: Settings = {
@@ -270,6 +275,7 @@ export const originalSettings: Settings = {
   cleanUrlArgument: true,
   bvToAv: false,
   legacyPlayerLoadingScreen: false,
+  showCommentIpLocation: true,
 }
 
 export const settings = useStorageLocal('settings', ref<Settings>(originalSettings), { mergeDefaults: true })

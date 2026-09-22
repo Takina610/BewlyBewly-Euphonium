@@ -6,6 +6,7 @@ import components from '~/components'
 import Appearance from '~/components/Settings/Appearance/Appearance.vue'
 import SearchPage from '~/components/Settings/BewlyPages/SearchPage/SearchPage.vue'
 import VideoPage from '~/components/Settings/BewlyPages/VideoPage/VideoPage.vue'
+import BilibiliSettings from '~/components/Settings/BilibiliSettings/BilibiliSettings.vue'
 import SlackingNotice from '~/components/Settings/components/SlackingNotice.vue'
 import Slacking from '~/components/Settings/Slacking/Slacking.vue'
 import { settings } from '~/logic'
@@ -62,6 +63,56 @@ it('renders the slacking tab with its group and item components resolved', () =>
   // Both components carry their own root class, so this only matches a real render
   expect(html).toContain('b-settings-item-group')
   expect(html).toContain('b-settings-item')
+
+  app.unmount()
+})
+
+/**
+ * The comment-section IP location switch lives in this tab, and it has already shipped invisible once:
+ * the source was right, but the copy the browser was running had been built before the change, so the
+ * group simply was not on screen. A build-freshness problem cannot be caught here — but the render can,
+ * and a missing import or a mistyped key looks exactly the same to the user (nothing there at all).
+ *
+ * The switch also has to be bound to the very setting the inject script reads, so that is asserted by
+ * flipping it rather than by looking for the label.
+ */
+it('renders the comment group of the bilibili settings tab, wired to the setting itself', async () => {
+  host = document.createElement('div')
+  document.body.appendChild(host)
+
+  const i18n = createI18n({
+    legacy: false,
+    locale: 'en',
+    fallbackLocale: 'en',
+    globalInjection: true,
+    missingWarn: false,
+    fallbackWarn: false,
+  })
+  const app = createApp(BilibiliSettings)
+  app.use(i18n)
+  app.use(components)
+  app.mount(host)
+  await nextTick()
+
+  const html = host.innerHTML
+  for (const tag of ['settingsitemgroup', 'settingsitem', 'radio'])
+    expect(html, `unresolved component: <${tag}>`).not.toMatch(new RegExp(`<${tag}[\\s>]`, 'i'))
+
+  // With no locale messages loaded the keys render as-is, which is what the other tabs assert too
+  expect(html).toContain('settings.comment_settings')
+  expect(html).toContain('settings.show_comment_ip_location')
+
+  // The last switch on the tab is the one this group adds; it has to track the stored setting
+  const switches = host.querySelectorAll<HTMLInputElement>('input[type="checkbox"]')
+  const ipLocationSwitch = switches[switches.length - 1]
+
+  settings.value.showCommentIpLocation = false
+  await nextTick()
+  expect(ipLocationSwitch.checked).toBe(false)
+
+  settings.value.showCommentIpLocation = true
+  await nextTick()
+  expect(ipLocationSwitch.checked).toBe(true)
 
   app.unmount()
 })

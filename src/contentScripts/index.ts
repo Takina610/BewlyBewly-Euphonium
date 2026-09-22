@@ -6,6 +6,7 @@ import { createApp } from 'vue'
 import { useDark } from '~/composables/useDark'
 import { BEWLY_MOUNTED } from '~/constants/globalEvents'
 import { settings } from '~/logic'
+import { setupCommentIpLocation } from '~/logic/commentIpLocation'
 import { setupApp } from '~/logic/common-setup'
 import { setupEarlySlackingMode } from '~/logic/slackingMode'
 import RESET_BEWLY_CSS from '~/styles/reset.css?raw'
@@ -152,6 +153,10 @@ if (isSupportedPages() || isSupportedIframePages() || isStylesOnlyPage) {
   // pages, for an idle callback — by which time the page has already painted in its normal colours.
   // The classes are applied as soon as the settings finish loading, so there is no flash to hide.
   setupEarlySlackingMode()
+
+  // Also earlier than the app: the comment section starts loading as soon as the page does, and the
+  // inject script can only act on the flag once it is on `<html>`.
+  setupCommentIpLocation()
 }
 
 if (settings.value.adaptToOtherPageStyles && isHomePage()) {

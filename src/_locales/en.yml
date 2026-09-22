@@ -355,6 +355,10 @@ settings:
   url_trim_settings: URL Trim
   clean_url_argument: Remove unnecessary URL argument (will also remove unnecessary URL argument of 'Share' button)
   bv_to_av: Convert BV number to AV number
+  comment_settings: Comments
+  show_comment_ip_location: Show IP location
+  show_comment_ip_location_desc: >
+    Shows the IP location after each comment's timestamp, in nested replies too. It is what was recorded when the comment was posted, not the user's current location.
 
   # About
   links: Links
