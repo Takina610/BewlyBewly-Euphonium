@@ -103,87 +103,33 @@ export function useDark() {
     // }
   }
 
-  function toggleDark(e: MouseEvent) {
+  /**
+   * Switches the theme outright, with no animation.
+   *
+   * This used to run inside a view transition with a circular clip-path reveal, and that reveal was
+   * what flashed: with a view transition the browser puts a snapshot of the *old* page on screen and
+   * plays the new state in over it, so switching to dark necessarily shows the light page after the
+   * click — and the longer the page takes to snapshot (a video page with comments and a player takes
+   * a while), the longer that light stays. The clip-path itself never even showed: it was aimed at
+   * `::view-transition-old(root)`, which paints *under* `::view-transition-new(root)`, so the only
+   * thing on screen was the browser's own cross-fade.
+   *
+   * The classes are applied here rather than left to the watcher so the switch lands in the same task
+   * as the click — one frame, nothing in between.
+   */
+  function toggleDark(_e: MouseEvent) {
     // While slacking mode forces the theme, a switch here would write a choice that cannot take
     // effect. Both callers (dock, sidebar) hide themselves in that state; this covers anything that
     // reaches it anyway, so the setting is never silently changed behind the user's back.
     if (settings.value.slackingMode)
       return
 
-    const updateThemeSettings = () => {
-      if (currentAppColorScheme.value !== currentSystemColorScheme.value)
-        settings.value.theme = 'auto'
-      else
-        settings.value.theme = isPreferredDark.value ? 'light' : 'dark'
-    }
+    if (currentAppColorScheme.value !== currentSystemColorScheme.value)
+      settings.value.theme = 'auto'
+    else
+      settings.value.theme = isPreferredDark.value ? 'light' : 'dark'
 
-    const isAppearanceTransition = typeof document !== 'undefined'
-    // @ts-expect-error: Transition API
-      && document.startViewTransition
-      && !window.matchMedia('(prefers-reduced-motion: reduce)').matches
-    if (!isAppearanceTransition) {
-      updateThemeSettings()
-    }
-    else {
-      const x = e.clientX
-      const y = e.clientY
-      const endRadius = Math.hypot(
-        Math.max(x, innerWidth - x),
-        Math.max(y, innerHeight - y),
-      )
-      // https://github.com/vueuse/vueuse/pull/3129
-      const style = document.createElement('style')
-      const styleString = `
-            *, *::before, *::after
-            {-webkit-transition:none!important;-moz-transition:none!important;-o-transition:none!important;-ms-transition:none!important;transition:none!important}`
-      style.appendChild(document.createTextNode(styleString))
-      document.head.appendChild(style)
-
-      // Since the above normal dom style cannot be applied in shadow dom style
-      // We need to add this style again to the shadow dom
-      const shadowDomStyle = document.createElement('style')
-      const shadowDomStyleString = `
-            *, *::before, *::after
-            {-webkit-transition:none!important;-moz-transition:none!important;-o-transition:none!important;-ms-transition:none!important;transition:none!important; will-change: background}`
-      shadowDomStyle.appendChild(document.createTextNode(shadowDomStyleString))
-
-      const bewlyShadowRoot = document.getElementById('bewly')?.shadowRoot
-      const bewlyWrapper = bewlyShadowRoot?.getElementById('bewly-wrapper')
-      if (!bewlyWrapper)
-        throw new Error('mainAppRef is not found')
-
-      bewlyWrapper.appendChild(shadowDomStyle)
-
-      const transition = document.startViewTransition(async () => {
-        updateThemeSettings()
-        await nextTick()
-      })
-
-      transition.ready.then(() => {
-        const clipPath = [
-          `circle(0px at ${x}px ${y}px)`,
-          `circle(${endRadius}px at ${x}px ${y}px)`,
-        ]
-        const animation = document.documentElement.animate(
-          {
-            clipPath: currentAppColorScheme.value === 'dark'
-              ? [...clipPath].reverse()
-              : clipPath,
-          },
-          {
-            duration: 300,
-            easing: 'ease-in-out',
-            pseudoElement: currentAppColorScheme.value === 'dark'
-              ? '::view-transition-old(root)'
-              : '::view-transition-new(root)',
-          },
-        )
-        animation.addEventListener('finish', () => {
-          document.head.removeChild(style!)
-          bewlyWrapper.removeChild(shadowDomStyle!)
-        }, { once: true })
-      })
-    }
+    setAppAppearance()
   }
 
   return {

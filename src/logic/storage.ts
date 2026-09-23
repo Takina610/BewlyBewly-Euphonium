@@ -74,6 +74,13 @@ export interface Settings {
   roundedVideoPlayer: boolean
   videoPageDanmakuStyle: 'auto' | 'on' | 'off'
   videoPageVideoPodStyle: 'auto' | 'on' | 'off'
+  /**
+   * 弹幕屏蔽等级，屏蔽权重低于该等级的弹幕。`0` 关闭。整条视频页上的弹幕都由它筛，
+   * 主世界注入脚本在弹幕分段返回时按这个值丢弃条目（见 `src/logic/danmakuLevelFilter.ts`）。
+   */
+  videoPageDanmakuLevelFilter: number
+  /** 在播放器信息栏里补回 B 站自己只在番剧页显示的「已装填 N 条弹幕」。 */
+  videoPageShowLoadedDanmakuCount: boolean
 
   searchPageDarkenOnSearchFocus: boolean
   searchPageBlurredOnSearchFocus: boolean
@@ -224,6 +231,8 @@ export const originalSettings: Settings = {
   roundedVideoPlayer: false,
   videoPageDanmakuStyle: 'off',
   videoPageVideoPodStyle: 'off',
+  videoPageDanmakuLevelFilter: 0,
+  videoPageShowLoadedDanmakuCount: true,
 
   searchPageDarkenOnSearchFocus: true,
   searchPageBlurredOnSearchFocus: false,

@@ -13,6 +13,8 @@ import { Type as ThreePointV2Type } from '~/models/video/appForYou'
 import type { forYouResult, Item as VideoItem } from '~/models/video/forYou'
 import api from '~/utils/api'
 import { TVAppKey } from '~/utils/authProvider'
+import { i18n } from '~/utils/i18n'
+import { notifyUserOnce } from '~/utils/notify'
 import { isVerticalVideo } from '~/utils/uriParse'
 
 const props = defineProps<{
@@ -408,7 +410,15 @@ async function getRecommendVideos() {
       // 其他错误码也应该停止加载，避免无限重试
       console.error('API returned error code:', response.code, response.message)
       noMoreContent.value = true
+      notifyUserOnce(i18n.global.t('common.load_failed'), 'error')
     }
+  }
+  catch (error) {
+    // 请求本身失败（断网、B 站报错）：列表会空着，不说明原因就跟没有内容一样。
+    // 也要立起停止标志：finally 里那段「填满首屏」的重试否则会一直重问同一个失败的接口。
+    console.error('Failed to load recommendations:', error)
+    noMoreContent.value = true
+    notifyUserOnce(i18n.global.t('common.load_failed'), 'error')
   }
   finally {
     const filledItems = videoList.value.filter(video => video.item)

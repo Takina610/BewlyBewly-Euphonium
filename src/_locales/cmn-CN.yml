@@ -7,6 +7,9 @@ common:
   viewWithoutNum: 次
   danmaku: '{count} 弹幕'
   danmakuWithoutNum: 弹幕
+  loaded_danmaku_count: '已装填 {count} 条弹幕'
+  extension_reloaded: 扩展已更新，请刷新页面
+  load_failed: 加载失败，刷新页面可重试
   anime_follow_count: '{count}人关注'
   year: 年前
   month: 个月前
@@ -93,6 +96,13 @@ settings:
   group_video_page: 视频页设置
   group_player_behaviour: 播放器行为
   remember_web_fullscreen: 按上次离开时的样子打开视频页（网页全屏）
+  group_danmaku: 弹幕
+  danmaku_level_filter: 弹幕屏蔽等级
+  danmaku_level_off: 关闭
+  danmaku_level_low: 低
+  danmaku_level_medium: 中
+  danmaku_level_high: 高
+  show_loaded_danmaku_count: 在播放器信息栏显示已装填的弹幕数
   group_slacking: 摸鱼模式
   group_slacking_desc: 让别人从旁边一眼扫过去，看不出你在看什么、也看不出你在娱乐。你的主题配色不会被改动——整页只是变暗，不是换色。
   group_slacking_trigger: 怎么切换

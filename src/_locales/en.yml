@@ -7,6 +7,9 @@ common:
   viewWithoutNum: ' views'
   danmaku: no danmaku | {count} danmaku | {count} danmakus
   danmakuWithoutNum: ' danmakus'
+  loaded_danmaku_count: '{count} danmaku loaded'
+  extension_reloaded: The extension was updated. Refresh this page.
+  load_failed: Failed to load. Refresh the page to try again.
   anime_follow_count: no follow | {count} follow | {count} follows
   year: year ago | years ago
   month: month ago | months ago
@@ -95,6 +98,13 @@ settings:
   group_video_page: Video Page Settings
   group_player_behaviour: Player Behaviour
   remember_web_fullscreen: Reopen video pages the way you left them (web fullscreen)
+  group_danmaku: Danmaku
+  danmaku_level_filter: Danmaku shield level
+  danmaku_level_off: Off
+  danmaku_level_low: Low
+  danmaku_level_medium: Medium
+  danmaku_level_high: High
+  show_loaded_danmaku_count: Show how many danmaku were loaded, in the player info bar
   group_slacking: Slacking Mode
   group_slacking_desc: Makes bilibili look like a plain, motionless work page at a glance, so that a passer-by cannot tell what you are watching. Your theme colours stay as they are — the page is dimmed, not repainted.
   group_slacking_trigger: How to toggle

@@ -423,6 +423,224 @@ function setupCommentIpLocation() {
 
 setupCommentIpLocation()
 
+// ============================ 弹幕等级过滤 ============================
+// 弹幕分段由播放器自己在主世界用 XHR 拉（`/x/v2/dm/wbi/web/seg.so`），所以只有这里能换掉它拿到的字节。
+// 屏蔽等级写在 <html> 的 data-bewly-danmaku-level 上（`src/logic/danmakuLevelFilter.ts`），与评论区
+// IP 属地同一套通道。
+//
+// 规则照抄 B 站自己的：`Math.abs(weight) < level` 就丢弃（它的过滤器里那句 `aiJudge` 就是这个判断，
+// 只是现在那个等级由弹幕密度推出来、几乎恒为 2~3，等于不生效）。weight 是弹幕自带的等级，9 号字段。
+//
+// protobuf 不必完整解析：repeated 字段允许把各段字节原样拼回去，所以按字段边界切开、跳过要丢的条目、
+// 剩下的拼接即可 —— 不认识的结构一个字节都不动。
+
+const DANMAKU_LEVEL_ATTR = 'data-bewly-danmaku-level'
+// 分段接口（wbi 前后缀都算）与历史弹幕，两侧返回的都是同一份 DmSegMobileReply
+const DANMAKU_SEGMENT_RE = /\/x\/v2\/dm\/[^?#]*(?:seg\.so|history)/
+const DANMAKU_ELEM_FIELD = 1
+const DANMAKU_MODE_FIELD = 3
+const DANMAKU_WEIGHT_FIELD = 9
+const DANMAKU_POOL_FIELD = 11
+
+function readDanmakuLevel() {
+  const level = Number(document.documentElement.getAttribute(DANMAKU_LEVEL_ATTR))
+  return Number.isFinite(level) && level > 0 ? level : 0
+}
+
+/** 读一个 varint。用乘法而不是 `<<`，64 位字段不会溢出成负数。 */
+function readVarint(bytes, pos) {
+  let value = 0
+  let shift = 0
+  while (pos < bytes.length) {
+    const byte = bytes[pos++]
+    value += (byte & 0x7F) * 2 ** shift
+    if (!(byte & 0x80))
+      return { value, pos }
+    shift += 7
+  }
+  return null
+}
+
+/**
+ * 读一个 int32 型的 varint，按补码还原符号。负数在 protobuf 里被符号扩展到 64 位，逐字节累加会变成
+ * 天文数字（`Math.abs` 就认不出它其实很小了），所以只取低 32 位：多出来的高位分组全是 2^32 的整数倍。
+ */
+function readInt32(bytes, pos) {
+  let raw = 0
+  let shift = 0
+  while (pos < bytes.length) {
+    const byte = bytes[pos++]
+    // 只累加低 32 位里的分组：位位置 ≥ 32 的那几组是 2^32 的整数倍，对低 32 位没有贡献
+    if (shift < 32)
+      raw = (raw + ((byte & 0x7F) << shift)) >>> 0
+    if (!(byte & 0x80))
+      return { value: raw > 2147483647 ? raw - 4294967296 : raw, pos }
+    shift += 7
+  }
+  return null
+}
+
+/** 按字段切开 [from, to) 这段消息，wire=0 的字段顺带把值读出来。切不动就返回 null。 */
+function readFields(bytes, from, to) {
+  const fields = []
+  let pos = from
+  while (pos < to) {
+    const start = pos
+    const tag = readVarint(bytes, pos)
+    if (!tag)
+      return null
+    pos = tag.pos
+    const field = Math.floor(tag.value / 8)
+    const wire = tag.value % 8
+    let value
+    let dataStart
+    let dataEnd
+    if (wire === 0) {
+      const read = readInt32(bytes, pos)
+      if (!read)
+        return null
+      value = read.value
+      pos = read.pos
+    }
+    else if (wire === 1) {
+      pos += 8
+    }
+    else if (wire === 2) {
+      const length = readVarint(bytes, pos)
+      if (!length)
+        return null
+      dataStart = length.pos
+      dataEnd = length.pos + length.value
+      pos = dataEnd
+    }
+    else if (wire === 5) {
+      pos += 4
+    }
+    else {
+      return null
+    }
+    if (pos > to)
+      return null
+    fields.push({ field, wire, value, start, end: pos, dataStart, dataEnd })
+  }
+  return fields
+}
+
+/** 一条弹幕里我们关心的三个数：等级（权重）、弹幕池、类型。 */
+function readDanmakuElem(bytes, field) {
+  const fields = readFields(bytes, field.dataStart, field.dataEnd)
+  if (!fields)
+    return null
+
+  const elem = { mode: 0, pool: 0, weight: undefined }
+  for (const entry of fields) {
+    if (entry.wire !== 0)
+      continue
+    if (entry.field === DANMAKU_WEIGHT_FIELD)
+      elem.weight = entry.value
+    else if (entry.field === DANMAKU_POOL_FIELD)
+      elem.pool = entry.value
+    else if (entry.field === DANMAKU_MODE_FIELD)
+      elem.mode = entry.value
+  }
+  return elem
+}
+
+function shouldDropDanmaku(elem, level) {
+  // 没带等级的条目一律放行：字幕池、代码/BAS 弹幕都可能没有这个字段，误删的代价比漏删大
+  if (elem.weight === undefined)
+    return false
+  if (elem.pool === 1 || elem.pool === 2)
+    return false
+  if (elem.mode >= 7)
+    return false
+  return Math.abs(elem.weight) < level
+}
+
+/** 丢掉等级不够的弹幕。返回 null 表示「原样放行」（认不出的字节流，或一条都没删）。 */
+function filterDanmakuSegment(bytes, level) {
+  const fields = readFields(bytes, 0, bytes.length)
+  if (!fields)
+    return null
+
+  const kept = []
+  for (const field of fields) {
+    if (field.field === DANMAKU_ELEM_FIELD && field.wire === 2) {
+      const elem = readDanmakuElem(bytes, field)
+      if (elem && shouldDropDanmaku(elem, level))
+        continue
+    }
+    kept.push(bytes.subarray(field.start, field.end))
+  }
+  if (kept.length === fields.length)
+    return null
+
+  let total = 0
+  for (const chunk of kept)
+    total += chunk.length
+  const filtered = new Uint8Array(total)
+  let offset = 0
+  for (const chunk of kept) {
+    filtered.set(chunk, offset)
+    offset += chunk.length
+  }
+  return filtered
+}
+
+function filterDanmakuResponse(xhr, value) {
+  const level = readDanmakuLevel()
+  if (!level || !xhr || !DANMAKU_SEGMENT_RE.test(xhr.__bewlyDanmakuUrl || ''))
+    return value
+  // 一次请求只过滤一次：页面可能反复读 response
+  if (xhr.__bewlyDanmakuResponse !== undefined)
+    return xhr.__bewlyDanmakuResponse
+
+  let response = value
+  if (value instanceof ArrayBuffer) {
+    const filtered = filterDanmakuSegment(new Uint8Array(value), level)
+    if (filtered)
+      response = filtered.buffer
+  }
+  try {
+    xhr.__bewlyDanmakuResponse = response
+  }
+  catch {}
+  return response
+}
+
+function setupDanmakuLevelFilter() {
+  if (typeof XMLHttpRequest === 'undefined')
+    return
+
+  const originalOpen = XMLHttpRequest.prototype.open
+  const originalSend = XMLHttpRequest.prototype.send
+  const responseDescriptor = Object.getOwnPropertyDescriptor(XMLHttpRequest.prototype, 'response')
+
+  XMLHttpRequest.prototype.open = function (method, url, ...rest) {
+    this.__bewlyDanmakuUrl = typeof url === 'string' ? url : String(url ?? '')
+    return originalOpen.call(this, method, url, ...rest)
+  }
+
+  XMLHttpRequest.prototype.send = function (...args) {
+    this.__bewlyDanmakuResponse = undefined
+    return originalSend.apply(this, args)
+  }
+
+  // 换掉 response 而不是 responseText：分段是二进制，`responseType` 是 arraybuffer，
+  // 而页面是在自己的 load 回调里读 `response` 的 —— 那里改已经来不及，只能在取值处拦。
+  if (responseDescriptor && responseDescriptor.get) {
+    Object.defineProperty(XMLHttpRequest.prototype, 'response', {
+      configurable: true,
+      enumerable: responseDescriptor.enumerable,
+      get() {
+        return filterDanmakuResponse(this, responseDescriptor.get.call(this))
+      },
+    })
+  }
+}
+
+setupDanmakuLevelFilter()
+
 window.___inject = true
 
 // History.prototype.pushState = history.pushState

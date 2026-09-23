@@ -8,6 +8,8 @@ import { settings } from '~/logic'
 import type { FollowingLiveResult, List as FollowingLiveItem } from '~/models/live/getFollowingLiveList'
 import type { DataItem as MomentItem, MomentResult } from '~/models/moment/moment'
 import api from '~/utils/api'
+import { i18n } from '~/utils/i18n'
+import { notifyUserOnce } from '~/utils/notify'
 
 // https://github.com/starknt/BewlyBewly/blob/fad999c2e482095dc3840bb291af53d15ff44130/src/contentScripts/views/Home/components/ForYou.vue#L16
 interface VideoElement {
@@ -97,7 +99,9 @@ async function getData() {
   isLoading.value = true
 
   try {
-    for (let i = 0; i < 3; i++)
+    // 三轮是为了把首屏填满（每轮拉一页）；而请求失败会把 `noMoreContent` 立起来，
+    // 这时继续问下去只是重复失败 —— 之前它会让同一个失败被问三遍、提示也弹三次。
+    for (let i = 0; i < 3 && !noMoreContent.value; i++)
       await getFollowedUsersVideos()
   }
   finally {
@@ -252,6 +256,19 @@ async function getFollowedUsersVideos() {
     else if (response.code === -101) {
       needToLoginFirst.value = true
     }
+    else {
+      // 其它错误码原来什么都不做：列表就空着，看起来和「没有内容」一样
+      console.error('API returned error code:', response.code, response.message)
+      noMoreContent.value = true
+      notifyUserOnce(i18n.global.t('common.load_failed'), 'error')
+    }
+  }
+  catch (error) {
+    // 同上：失败要立起停止标志。少了这一句，上面那三轮会把同一个失败各问一遍、也各报一遍，
+    // 用户在页面上看到的是一模一样的三条提示。
+    console.error('Failed to load followed users\' videos:', error)
+    noMoreContent.value = true
+    notifyUserOnce(i18n.global.t('common.load_failed'), 'error')
   }
   finally {
     videoList.value = videoList.value.filter(video => video.item)

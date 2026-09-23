@@ -8,7 +8,9 @@ import { BEWLY_MOUNTED } from '~/constants/globalEvents'
 import { settings } from '~/logic'
 import { setupCommentIpLocation } from '~/logic/commentIpLocation'
 import { setupApp } from '~/logic/common-setup'
+import { setupDanmakuLevelFilter } from '~/logic/danmakuLevelFilter'
 import { setupEarlySlackingMode } from '~/logic/slackingMode'
+import { setupVideoPageDanmakuCount } from '~/logic/videoPageDanmakuCount'
 import { setupVideoPageRecommendationFilter } from '~/logic/videoPageRecommendationFilter'
 import { setupWebFullscreenMemory } from '~/logic/webFullscreenMemory'
 import RESET_BEWLY_CSS from '~/styles/reset.css?raw'
@@ -160,6 +162,10 @@ if (isSupportedPages() || isSupportedIframePages() || isStylesOnlyPage) {
   // inject script can only act on the flag once it is on `<html>`.
   setupCommentIpLocation()
 
+  // Same channel, same reason: the player fetches danmaku segments itself, so the inject script does
+  // the filtering and only needs the level, which this publishes on `<html>`.
+  setupDanmakuLevelFilter()
+
   // And the recommendation rail, which bilibili renders before our app mounts — the filter has to be
   // watching for it by then, or a card would be seen and then pulled away.
   setupVideoPageRecommendationFilter()
@@ -167,8 +173,10 @@ if (isSupportedPages() || isSupportedIframePages() || isStylesOnlyPage) {
   // The player takes the longest of the lot to mount, so this has to be listening well before it does.
   // The page gate lives here rather than in the module: the drawer's frame renders a video page too,
   // and a panel of someone else's layout must never take itself fullscreen.
-  if (!isInIframe() && isVideoOrBangumiPage())
+  if (!isInIframe() && isVideoOrBangumiPage()) {
     setupWebFullscreenMemory()
+    setupVideoPageDanmakuCount()
+  }
 }
 
 if (settings.value.adaptToOtherPageStyles && isHomePage()) {

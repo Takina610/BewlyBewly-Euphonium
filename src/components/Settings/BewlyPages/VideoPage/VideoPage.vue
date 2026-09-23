@@ -10,6 +10,18 @@ watch(() => settings.value.legacyPlayerLoadingScreen, () => {
   if (isVideoOrBangumiPage())
     location.reload()
 })
+
+/**
+ * The four shield levels. The numbers are the level itself — danmaku below it are dropped — and they
+ * are what gets stored, but what the user picks from is a plain low/medium/high, because the real
+ * values (9/10/11) are an implementation detail of how bilibili scores danmaku today.
+ */
+const danmakuLevelOptions = [
+  { value: 0, label: 'settings.danmaku_level_off' },
+  { value: 9, label: 'settings.danmaku_level_low' },
+  { value: 10, label: 'settings.danmaku_level_medium' },
+  { value: 11, label: 'settings.danmaku_level_high' },
+]
 </script>
 
 <template>
@@ -109,6 +121,29 @@ watch(() => settings.value.legacyPlayerLoadingScreen, () => {
 
         <SettingsItem :title="$t('settings.legacy_player_loading_screen')">
           <Radio v-model="settings.legacyPlayerLoadingScreen" />
+        </SettingsItem>
+      </SettingsItemGroup>
+
+      <SettingsItemGroup :title="$t('settings.group_danmaku')">
+        <!-- 弹幕等级过滤：把等级不够的弹幕从播放器拿到的数据里去掉 -->
+        <SettingsItem :title="$t('settings.danmaku_level_filter')">
+          <div w-full flex rounded="$bew-radius" bg="$bew-fill-1" p-1>
+            <div
+              v-for="option in danmakuLevelOptions" :key="option.value"
+              flex-1 py-1 cursor-pointer text-center rounded="$bew-radius"
+              :style="{
+                background: settings.videoPageDanmakuLevelFilter === option.value ? 'var(--bew-theme-color)' : '',
+                color: settings.videoPageDanmakuLevelFilter === option.value ? 'white' : '',
+              }"
+              @click="settings.videoPageDanmakuLevelFilter = option.value"
+            >
+              {{ $t(option.label) }}
+            </div>
+          </div>
+        </SettingsItem>
+
+        <SettingsItem :title="$t('settings.show_loaded_danmaku_count')">
+          <Radio v-model="settings.videoPageShowLoadedDanmakuCount" />
         </SettingsItem>
       </SettingsItemGroup>
 
