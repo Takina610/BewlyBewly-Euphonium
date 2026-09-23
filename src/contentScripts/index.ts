@@ -9,6 +9,8 @@ import { settings } from '~/logic'
 import { setupCommentIpLocation } from '~/logic/commentIpLocation'
 import { setupApp } from '~/logic/common-setup'
 import { setupEarlySlackingMode } from '~/logic/slackingMode'
+import { setupVideoPageRecommendationFilter } from '~/logic/videoPageRecommendationFilter'
+import { setupWebFullscreenMemory } from '~/logic/webFullscreenMemory'
 import RESET_BEWLY_CSS from '~/styles/reset.css?raw'
 import { runWhenIdle } from '~/utils/lazyLoad'
 import { compareVersions, injectCSS, isHomePage, isInIframe, isNotificationPage, isVideoOrBangumiPage } from '~/utils/main'
@@ -157,6 +159,16 @@ if (isSupportedPages() || isSupportedIframePages() || isStylesOnlyPage) {
   // Also earlier than the app: the comment section starts loading as soon as the page does, and the
   // inject script can only act on the flag once it is on `<html>`.
   setupCommentIpLocation()
+
+  // And the recommendation rail, which bilibili renders before our app mounts — the filter has to be
+  // watching for it by then, or a card would be seen and then pulled away.
+  setupVideoPageRecommendationFilter()
+
+  // The player takes the longest of the lot to mount, so this has to be listening well before it does.
+  // The page gate lives here rather than in the module: the drawer's frame renders a video page too,
+  // and a panel of someone else's layout must never take itself fullscreen.
+  if (!isInIframe() && isVideoOrBangumiPage())
+    setupWebFullscreenMemory()
 }
 
 if (settings.value.adaptToOtherPageStyles && isHomePage()) {

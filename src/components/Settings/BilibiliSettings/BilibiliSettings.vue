@@ -18,6 +18,12 @@ import SettingsItemGroup from '../components/SettingsItemGroup.vue'
         <SettingsItem :title="$t('settings.block_vip_danmuku_style')">
           <Radio v-model="settings.blockVIPDanmukuStyle" />
         </SettingsItem>
+        <SettingsItem :title="$t('settings.video_page_filter_recommendations')">
+          <Radio v-model="settings.videoPageFilterRecommendations" />
+        </SettingsItem>
+        <SettingsItem :title="$t('settings.video_page_filter_numeric_conditions')">
+          <Radio v-model="settings.videoPageFilterNumericConditions" />
+        </SettingsItem>
       </SettingsItemGroup>
     </SettingsItemGroup>
 

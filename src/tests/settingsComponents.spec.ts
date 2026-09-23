@@ -30,6 +30,20 @@ afterEach(() => {
 })
 
 /**
+ * The switch inside the settings item whose title renders as `key`. No locale messages are loaded here,
+ * so a title renders as its key — and an item's own description contains that key too, which is why
+ * this scopes to the item rather than to any element mentioning it. Matching by label instead of by
+ * position matters on this tab: switches get added to it, and "the last one" silently becomes something
+ * else the moment they do.
+ */
+function switchFor(target: HTMLElement, key: string): HTMLInputElement | null {
+  const item = Array.from(target.querySelectorAll<HTMLElement>('.b-settings-item'))
+    .find(el => el.textContent?.includes(key))
+
+  return item?.querySelector<HTMLInputElement>('input[type="checkbox"]') ?? null
+}
+
+/**
  * `SettingsItem` and `SettingsItemGroup` live in `Settings/components/`, which the auto-registration
  * glob in `components/index.ts` does not cover — every settings tab has to import them by hand.
  * Forgetting that import does not fail `vue-tsc`; it silently renders the tags as unknown elements,
@@ -102,17 +116,64 @@ it('renders the comment group of the bilibili settings tab, wired to the setting
   expect(html).toContain('settings.comment_settings')
   expect(html).toContain('settings.show_comment_ip_location')
 
-  // The last switch on the tab is the one this group adds; it has to track the stored setting
-  const switches = host.querySelectorAll<HTMLInputElement>('input[type="checkbox"]')
-  const ipLocationSwitch = switches[switches.length - 1]
+  // The switch has to track the very setting the inject script reads
+  const ipLocationSwitch = switchFor(host, 'settings.show_comment_ip_location')
+  expect(ipLocationSwitch, 'the IP location switch').not.toBeNull()
 
   settings.value.showCommentIpLocation = false
   await nextTick()
-  expect(ipLocationSwitch.checked).toBe(false)
+  expect(ipLocationSwitch!.checked).toBe(false)
 
   settings.value.showCommentIpLocation = true
   await nextTick()
-  expect(ipLocationSwitch.checked).toBe(true)
+  expect(ipLocationSwitch!.checked).toBe(true)
+
+  app.unmount()
+})
+
+/**
+ * The recommendation rail's two switches live in the same tab. They are bound to settings of their own
+ * (the rail shares the home feed's lists rather than owning any), so both have to be present and
+ * track the setting the filter reads.
+ */
+it('renders the recommendation-rail switches of the bilibili settings tab', async () => {
+  host = document.createElement('div')
+  document.body.appendChild(host)
+
+  const i18n = createI18n({
+    legacy: false,
+    locale: 'en',
+    fallbackLocale: 'en',
+    globalInjection: true,
+    missingWarn: false,
+    fallbackWarn: false,
+  })
+  const app = createApp(BilibiliSettings)
+  app.use(i18n)
+  app.use(components)
+  app.mount(host)
+  await nextTick()
+
+  const html = host.innerHTML
+  expect(html).toContain('settings.video_page_filter_recommendations')
+  expect(html).toContain('settings.video_page_filter_numeric_conditions')
+
+  const railSwitch = switchFor(host, 'settings.video_page_filter_recommendations')
+  const thresholdsSwitch = switchFor(host, 'settings.video_page_filter_numeric_conditions')
+  expect(railSwitch, 'the rail switch').not.toBeNull()
+  expect(thresholdsSwitch, 'the thresholds switch').not.toBeNull()
+
+  settings.value.videoPageFilterRecommendations = false
+  settings.value.videoPageFilterNumericConditions = true
+  await nextTick()
+  expect(railSwitch!.checked).toBe(false)
+  expect(thresholdsSwitch!.checked).toBe(true)
+
+  settings.value.videoPageFilterRecommendations = true
+  settings.value.videoPageFilterNumericConditions = false
+  await nextTick()
+  expect(railSwitch!.checked).toBe(true)
+  expect(thresholdsSwitch!.checked).toBe(false)
 
   app.unmount()
 })
@@ -156,6 +217,47 @@ it('explains the take-over only while slacking mode is on', async () => {
   // The action has to be there: this is the whole point of the notice
   expect(html).toContain('settings.slacking_notice_disable')
   expect(html).toContain('i-mingcute:eye-close-fill')
+
+  app.unmount()
+})
+
+/**
+ * The video page tab carries the player-behaviour group. It is one of the tabs slacking mode replaces
+ * wholesale, so this asserts the switch in the state where the tab is actually shown.
+ */
+it('renders the player-behaviour switch of the video page tab', async () => {
+  host = document.createElement('div')
+  document.body.appendChild(host)
+
+  const i18n = createI18n({
+    legacy: false,
+    locale: 'en',
+    fallbackLocale: 'en',
+    globalInjection: true,
+    missingWarn: false,
+    fallbackWarn: false,
+  })
+  const app = createApp(VideoPage)
+  app.use(i18n)
+  app.use(components)
+  settings.value.slackingMode = false
+  app.mount(host)
+  await nextTick()
+
+  const html = host.innerHTML
+  expect(html).toContain('settings.group_player_behaviour')
+  expect(html).toContain('settings.remember_web_fullscreen')
+
+  const switchEl = switchFor(host, 'settings.remember_web_fullscreen')
+  expect(switchEl, 'the web fullscreen memory switch').not.toBeNull()
+
+  settings.value.videoPageRememberWebFullscreen = false
+  await nextTick()
+  expect(switchEl!.checked).toBe(false)
+
+  settings.value.videoPageRememberWebFullscreen = true
+  await nextTick()
+  expect(switchEl!.checked).toBe(true)
 
   app.unmount()
 })

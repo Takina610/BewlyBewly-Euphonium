@@ -1,6 +1,17 @@
 import { isInIframe, isVideoOrBangumiPage, queryDomUntilFound } from '~/utils/main'
 
 /**
+ * The control that toggles web fullscreen (网页全屏), and the class it carries while that mode is on.
+ *
+ * The state has to be read off the player's own button: the player keeps it nowhere we could read from
+ * the outside, and the container's `data-screen` is shared with the other screen modes (wide, full).
+ *
+ * Exported because the memory module watches the very same two anchors — one place to keep them right.
+ */
+export const WEB_FULLSCREEN_BUTTON_SELECTOR = '.bpx-player-ctrl-btn.bpx-player-ctrl-web'
+export const WEB_FULLSCREEN_ENTERED_CLASS = 'bpx-state-entered'
+
+/**
  * Detect Bilibili web fullscreen (网页全屏) on video/bangumi pages.
  *
  * On normal video pages Bilibili's web-fullscreen player layer happens to cover our overlay
@@ -23,12 +34,12 @@ export function useWebFullscreen() {
     if (isInIframe() || !isVideoOrBangumiPage())
       return
 
-    queryDomUntilFound('.bpx-player-ctrl-btn.bpx-player-ctrl-web', 500, abort).then((webFullscreenBtn) => {
+    queryDomUntilFound(WEB_FULLSCREEN_BUTTON_SELECTOR, 500, abort).then((webFullscreenBtn) => {
       if (!webFullscreenBtn)
         return
 
       const sync = () => {
-        isWebFullscreen.value = webFullscreenBtn.classList.contains('bpx-state-entered')
+        isWebFullscreen.value = webFullscreenBtn.classList.contains(WEB_FULLSCREEN_ENTERED_CLASS)
       }
       sync()
       observer = new MutationObserver(sync)

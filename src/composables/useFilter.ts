@@ -21,7 +21,20 @@ type FuncMap = { [key in FilterType]: {
 
 type KeyPath = Array<string>[]
 
-export function useFilter(isFollowedKeyPath: string[], filterOpt: FilterType[], keyList: KeyPath) {
+/**
+ * Builds the predicate that decides whether an item is kept.
+ *
+ * The same code judges the home feed and the video page's recommendation rail, so `/regex/` entries and
+ * the `万`-style numbers behave identically in both. `enableOverride` exists because the two answer "is
+ * this condition on?" differently: the home feed reads a switch per condition, while the rail is
+ * governed by one switch of its own plus an opt-in for the thresholds.
+ */
+export function useFilter(
+  isFollowedKeyPath: string[],
+  filterOpt: FilterType[],
+  keyList: KeyPath,
+  enableOverride: Partial<Record<FilterType, boolean>> = {},
+) {
   function filterOutVerticalVideos(item: any, keyPath: string[], _filterValue: number) {
     const value = get(item, keyPath)
     return !isVerticalVideo(value)
@@ -168,6 +181,21 @@ export function useFilter(isFollowedKeyPath: string[], filterOpt: FilterType[], 
     },
   }
 
+  /**
+   * Whether a condition takes part in this instance. An override wins over the setting the condition
+   * normally reads, which is what lets one switch turn the shared blocklists on somewhere else without
+   * changing what the home feed does.
+   */
+  function isConditionEnabled(type: FilterType, enabledKey: string): boolean {
+    const override = enableOverride[type]
+    if (override !== undefined)
+      return override
+
+    return enabledKey
+      ? Boolean((settings.value as { [key: string]: any })[enabledKey])
+      : false
+  }
+
   const filter = ref<Function | null>(null)
 
   watch(() => [
@@ -181,13 +209,19 @@ export function useFilter(isFollowedKeyPath: string[], filterOpt: FilterType[], 
     settings.value.filterByViewCount,
     settings.value.filterByTitle,
     settings.value.filterByUser,
-  ], ([filterOutVerticalVideos, durationFilter, viewCountFilter, titleFilter, userFilter, likeViewRatioFilter]) => {
-    if (!filterOutVerticalVideos && !durationFilter && !viewCountFilter && !titleFilter && !userFilter && !likeViewRatioFilter) {
-      filter.value = null
-      return
-    }
-    filter.value = factoryFilter(funcMap, filterOpt, keyList)
-  }, { immediate: true })
+  ], () => {
+    const anyEnabled = filterOpt.some((type) => {
+      const { enabledKey } = funcMap[type]
+      return isConditionEnabled(type, enabledKey)
+    })
+
+    filter.value = anyEnabled ? factoryFilter(funcMap, filterOpt, keyList) : null
+  }, {
+    immediate: true,
+    // The two tables are edited in place (push/splice/index assignment), which a property-level watch
+    // would never see — adding a keyword has to take effect without a reload.
+    deep: true,
+  })
 
   function factoryFilter(funcMap: FuncMap, filterOpt: FilterType[], keyList: KeyPath): Function {
     interface FuncParams {
@@ -200,7 +234,7 @@ export function useFilter(isFollowedKeyPath: string[], filterOpt: FilterType[], 
 
     filterOpt.forEach((type, index) => {
       const { func, enabledKey, valueKey } = funcMap[type]
-      if ((settings.value as { [key: string]: any })[enabledKey]) {
+      if (isConditionEnabled(type, enabledKey)) {
         const funcParams: FuncParams = {
           keyPath: keyList[index],
           func,

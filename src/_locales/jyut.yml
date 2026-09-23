@@ -91,6 +91,8 @@ settings:
   group_search_page_mode: 搵嘢頁模式
   group_home_tabs: 主頁分頁欄
   group_video_page: 影片頁設定
+  group_player_behaviour: 播放器行為
+  remember_web_fullscreen: 照上次離開嗰陣咁開影片頁（網頁全螢幕）
   group_slacking: 摸魚模式
   group_slacking_desc: 等人哋喺側邊一眼掃過去，睇唔出你喺度睇乜、亦都睇唔出你喺度娛樂。你嘅主題配色唔會被改動——成版淨係暗咗，唔係換色。
   group_slacking_trigger: 點樣切換
@@ -348,6 +350,8 @@ settings:
   block_top_search_page_ads: 封鎖 bilibili 搵嘢頁上方的廣告
   block_top_search_page_ads_desc: 有時喺搵嘢結果上高嘅廣告，其實係年結報告抑或週年報告嚟㗎。若然你唔想佢哋唔覺意俾人刪咗，就請你閂咗呢個選項啦。
   block_vip_danmuku_style: 封鎖大會員彈幕嘅彩色樣式（將佢改返做正常彈幕使用嘅樣式）
+  video_page_filter_recommendations: 收埋影片頁相關推薦入面中咗標題封鎖詞或者 UP 主黑名單嘅影片
+  video_page_filter_numeric_conditions: 順便套用播放量同時長門檻（同首頁共用）
   url_trim_settings: 頁面 URL 修剪
   clean_url_argument: 移除唔必要嘅 URL 參數（仲會自動清埋『分享』掣帶住嗰）
   bv_to_av: 將 BV 號轉換爲 AV 號

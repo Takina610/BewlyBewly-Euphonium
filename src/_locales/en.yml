@@ -93,6 +93,8 @@ settings:
   group_search_page_mode: Search Page Mode
   group_home_tabs: Home Tabs
   group_video_page: Video Page Settings
+  group_player_behaviour: Player Behaviour
+  remember_web_fullscreen: Reopen video pages the way you left them (web fullscreen)
   group_slacking: Slacking Mode
   group_slacking_desc: Makes bilibili look like a plain, motionless work page at a glance, so that a passer-by cannot tell what you are watching. Your theme colours stay as they are — the page is dimmed, not repainted.
   group_slacking_trigger: How to toggle
@@ -352,6 +354,8 @@ settings:
   block_top_search_page_ads: Block bilibili top search page ads
   block_top_search_page_ads_desc: Sometimes, the ads above search results are actually year-end summaries or annual reports. If you don't want these to be accidentally removed, please disable this option.
   block_vip_danmuku_style: Block VIP danmuku style
+  video_page_filter_recommendations: Hide recommendations matching your title and uploader blocklists
+  video_page_filter_numeric_conditions: Also apply the view count and duration thresholds (shared with the home page)
   url_trim_settings: URL Trim
   clean_url_argument: Remove unnecessary URL argument (will also remove unnecessary URL argument of 'Share' button)
   bv_to_av: Convert BV number to AV number

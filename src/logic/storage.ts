@@ -105,6 +105,11 @@ export interface Settings {
   enableFilterByUser: boolean
   filterByUser: { keyword: string, remark: string }[]
 
+  // Video page recommendation rail. It reads the two tables above — the rail has no lists of its own,
+  // only these two switches.
+  videoPageFilterRecommendations: boolean
+  videoPageFilterNumericConditions: boolean
+
   followingTabShowLivestreamingVideos: boolean
 
   homePageTabVisibilityList: { page: HomeSubPage, visible: boolean }[]
@@ -140,6 +145,11 @@ export interface Settings {
   cleanUrlArgument: boolean
   bvToAv: boolean
   legacyPlayerLoadingScreen: boolean
+  /**
+   * 进入视频页时，按上次离开时的样子恢复网页全屏（网页全屏状态本身另存，见下方 `webFullscreenEntered`）。
+   * 手动退出全屏后当次不再自动进入，下次也不会——退出这个动作本身就是"记住"的内容。
+   */
+  videoPageRememberWebFullscreen: boolean
   /**
    * 在评论区每条评论的时间后面显示 IP 属地。属地本来就在 B 站接口返回的评论数据里
    * （`reply_control.location`），网页端不渲染而已，打开后由主世界的注入脚本把它补到 DOM 上。
@@ -245,6 +255,10 @@ export const originalSettings: Settings = {
   enableFilterByUser: false,
   filterByUser: [],
 
+  // On by default, but the lists it reads start empty, so it stays quiet until they are filled
+  videoPageFilterRecommendations: true,
+  videoPageFilterNumericConditions: false,
+
   followingTabShowLivestreamingVideos: true,
 
   homePageTabVisibilityList: [],
@@ -275,6 +289,7 @@ export const originalSettings: Settings = {
   cleanUrlArgument: true,
   bvToAv: false,
   legacyPlayerLoadingScreen: false,
+  videoPageRememberWebFullscreen: true,
   showCommentIpLocation: true,
 }
 
@@ -301,3 +316,11 @@ export const sidePanel = useStorageLocal('sidePanel', ref<{
  * several disguised tabs can still be told apart by the user.
  */
 export const slackingTitleSeq = useStorageLocal('slackingTitleSeq', 0)
+
+/**
+ * Whether the last video page was left in web fullscreen (网页全屏). Kept apart from `settings`
+ * because nobody chooses it: it is written as the player's own state changes, and read back when the
+ * next video page opens. bilibili does not remember this itself — its player profile carries volume,
+ * quality and danmaku preferences, but nothing about the screen mode.
+ */
+export const webFullscreenEntered = useStorageLocal('webFullscreenEntered', false)
