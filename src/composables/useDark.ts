@@ -9,6 +9,13 @@ export function useDark() {
   const isPreferredDark = usePreferredDark()
   const currentSystemColorScheme = computed(() => isPreferredDark.value ? 'dark' : 'light')
   const currentAppColorScheme = computed((): 'dark' | 'light' => {
+    // Slacking mode keeps the dark theme on: a light page under the dim overlay only reads as grey,
+    // and that grey is its own kind of tell. Runtime-only — `settings.theme` is never written, so the
+    // user's own choice is back the moment the mode goes off. The early half of this lives in
+    // `applySlackingClass`, which lands the same classes at `document_start` instead of at mount.
+    if (settings.value.slackingMode)
+      return 'dark'
+
     if (settings.value.theme !== 'auto')
       return settings.value.theme
     else
@@ -20,7 +27,9 @@ export function useDark() {
   // Watch for changes in the 'settings.value.theme' variable and add the 'dark' class to the 'mainApp' element
   // to prevent some Unocss dark-specific styles from failing to take effect
   watch(
-    () => [settings.value.theme, isPreferredDark.value],
+    // `slackingMode` belongs here because it overrides what the theme resolves to: without it, leaving
+    // the mode would keep the forced classes on until something else happened to change the theme.
+    () => [settings.value.theme, isPreferredDark.value, settings.value.slackingMode],
     () => {
       setAppAppearance()
     },
@@ -95,6 +104,12 @@ export function useDark() {
   }
 
   function toggleDark(e: MouseEvent) {
+    // While slacking mode forces the theme, a switch here would write a choice that cannot take
+    // effect. Both callers (dock, sidebar) hide themselves in that state; this covers anything that
+    // reaches it anyway, so the setting is never silently changed behind the user's back.
+    if (settings.value.slackingMode)
+      return
+
     const updateThemeSettings = () => {
       if (currentAppColorScheme.value !== currentSystemColorScheme.value)
         settings.value.theme = 'auto'

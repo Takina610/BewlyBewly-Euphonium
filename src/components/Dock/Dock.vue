@@ -312,8 +312,9 @@ const dockTransformStyle = computed((): { transform: string, transformOrigin: st
         <!-- dividing line -->
         <div class="divider" />
 
+        <!-- Also hidden while slacking mode forces the theme, where a switch here could not take effect -->
         <Tooltip
-          v-if="!settings.disableLightDarkModeSwitcherOnDock"
+          v-if="!settings.disableLightDarkModeSwitcherOnDock && !settings.slackingMode"
           :content="isDark ? $t('dock.dark_mode') : $t('dock.light_mode')" :placement="tooltipPlacement"
           class="group"
           pointer-events-none

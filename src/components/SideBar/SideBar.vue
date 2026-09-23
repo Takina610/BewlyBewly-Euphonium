@@ -78,7 +78,8 @@ function toggleHideSidebar(hide: boolean) {
       pointer-events-auto
       duration-300
     >
-      <Tooltip :content="isDark ? $t('dock.dark_mode') : $t('dock.light_mode')" placement="left">
+      <!-- Hidden while slacking mode forces the theme, where a switch here could not take effect -->
+      <Tooltip v-if="!settings.slackingMode" :content="isDark ? $t('dock.dark_mode') : $t('dock.light_mode')" placement="left">
         <Button
           class="ctrl-btn"
           style="backdrop-filter: var(--bew-filter-glass-1);"

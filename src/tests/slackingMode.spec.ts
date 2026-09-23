@@ -1,6 +1,7 @@
 import { beforeEach, expect, it, vi } from 'vitest'
 import { nextTick } from 'vue'
 
+import { useDark } from '~/composables/useDark'
 import { settings } from '~/logic/storage'
 
 import { applySlackingClass, setupEarlySlackingMode, slackingAutoHeavy, slackingDimAlpha, slackingEffectiveLevel } from '../logic/slackingMode'
@@ -248,4 +249,83 @@ it('dresses a host that is already in the page', async () => {
   await flushObserver()
 
   expect(host.classList.contains('slacking-mode')).toBe(true)
+})
+
+/**
+ * A light page under the dim overlay does not read as "off" — it reads as grey, and grey is its own
+ * kind of tell. So the mode keeps the theme dark for as long as it is on, and hands the user's own
+ * choice back when it is switched off.
+ */
+it('keeps the dark theme on while the mode is on, and hands the user\'s choice back', () => {
+  const host = document.createElement('div')
+  host.id = 'bewly'
+  document.body.append(host)
+
+  settings.value.theme = 'light'
+  applySlackingClass()
+  expect(document.documentElement.classList.contains('dark')).toBe(false)
+
+  settings.value.slackingMode = true
+  applySlackingClass()
+
+  expect(document.documentElement.classList.contains('dark')).toBe(true)
+  expect(document.body.classList.contains('dark')).toBe(true)
+  // Our own UI lives in the shadow host, not on the document
+  expect(host.classList.contains('dark')).toBe(true)
+  // The user's own choice is never written, which is what makes switching back possible
+  expect(settings.value.theme).toBe('light')
+
+  settings.value.slackingMode = false
+  applySlackingClass()
+
+  expect(document.documentElement.classList.contains('dark')).toBe(false)
+  expect(host.classList.contains('dark')).toBe(false)
+
+  host.remove()
+})
+
+/**
+ * The forced theme rides on the early setup for the same reason everything else does: the app does not
+ * mount until later, and a page that paints light and then snaps dark is the exact flash this mode
+ * exists to avoid.
+ */
+it('forces the dark theme from the early setup alone, before any app could have mounted', async () => {
+  settings.value.theme = 'light'
+  setupEarlySlackingMode()
+  await nextTick()
+  expect(document.documentElement.classList.contains('dark')).toBe(false)
+
+  settings.value.slackingMode = true
+  await nextTick()
+
+  expect(document.documentElement.classList.contains('dark')).toBe(true)
+  expect(document.body.classList.contains('dark')).toBe(true)
+})
+
+/**
+ * `useDark` is what our own UI reads — the dock icon, card badges, the settings window, the PiP window —
+ * so the forced theme has to resolve there too. And a switch that cannot take effect must not write a
+ * choice: both callers hide themselves while the mode is on, and this is the guard behind them.
+ */
+it('resolves the forced theme in useDark, and refuses to write the theme while the mode is on', () => {
+  settings.value.theme = 'light'
+  const { isDark, toggleDark } = useDark()
+
+  expect(isDark.value).toBe(false)
+
+  settings.value.slackingMode = true
+  expect(isDark.value).toBe(true)
+
+  toggleDark(new MouseEvent('click'))
+  expect(settings.value.theme).toBe('light')
+  expect(isDark.value).toBe(true)
+
+  settings.value.slackingMode = false
+  expect(isDark.value).toBe(false)
+
+  // With the mode off the switch works again
+  toggleDark(new MouseEvent('click'))
+  expect(settings.value.theme).toBe('dark')
+
+  settings.value.theme = 'auto'
 })

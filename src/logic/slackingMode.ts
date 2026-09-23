@@ -1,6 +1,6 @@
 import { settings, slackingTitleSeq } from '~/logic'
 import { i18n } from '~/utils/i18n'
-import { isInIframe } from '~/utils/main'
+import { isInIframe, setCookie } from '~/utils/main'
 import { matchesShortcut } from '~/utils/shortcut'
 
 /**
@@ -94,6 +94,32 @@ export function applySlackingClass() {
     el.classList.toggle('slacking-mode', enabled)
     el.classList.toggle('slacking-heavy', level === 'heavy')
     el.classList.toggle('slacking-hide-danmaku', settings.value.slackingMode && settings.value.slackingHideDanmaku)
+  }
+
+  // Slacking mode keeps the dark theme on: a light page under the dim overlay only reads as grey, and
+  // that grey is its own kind of tell. `useDark` resolves the same way, but it does not run until the
+  // app mounts — applying it here too is what stops the page from painting light and snapping dark a
+  // moment later. Undoing it is left to `useDark`, which owns the decision while the mode is off (it
+  // is the one that knows what an `auto` theme resolves to).
+  if (enabled) {
+    for (const el of [root, document.body, document.querySelector('#bewly')]) {
+      if (el)
+        el.classList.add('dark')
+    }
+    // bilibili reads its own theme from this cookie, so it has to land before bilibili's first paint
+    // for its native parts to come up dark, rather than flipping once the app mounts.
+    setCookie('theme_style', 'dark', 365 * 10)
+  }
+  else if (settings.value.theme === 'light') {
+    // Only the unambiguous case is handed back here. `auto` depends on the system, which this early
+    // layer deliberately stays out of, and `useDark` reconciles every combination as soon as it runs —
+    // this branch is for the pages where no app is mounted to do that.
+    for (const el of [root, document.body, document.querySelector('#bewly')]) {
+      if (el)
+        el.classList.remove('dark')
+    }
+    // The cookie has to come back with it, or bilibili's own parts would stay dark on the next load
+    setCookie('theme_style', 'light', 365 * 10)
   }
 
   // Inside a frame the enclosing page already dims everything the frame shows, so dimming again here
