@@ -204,14 +204,16 @@ function setupReplyActionInterceptor() {
 
 setupReplyActionInterceptor()
 
-// ============================ 评论区 IP 属地 ============================
-// 属地本来就躺在 B 站接口返回的评论数据里（`reply_control.location`），只是网页端不渲染它。
-// 评论组件是 lit 写的，把数据挂在元素实例属性上，而隔离世界看不到页面自定义组件的实例属性 ——
-// 所以读数据这件事只能由跑在主世界的注入脚本来做，content script 只往 <html> 上写开关
-// （`src/logic/commentIpLocation.ts`，与 data-bewly-clean-url 同一套做法）。
+// ============================ 评论区 IP 属地与性别 ============================
+// 属地与性别本来就躺在 B 站接口返回的评论数据里（`reply_control.location` 与 `member.sex`），
+// 只是网页端不渲染它们。评论组件是 lit 写的，把数据挂在元素实例属性上，而隔离世界看不到页面自定义
+// 组件的实例属性 —— 所以读数据这件事只能由跑在主世界的注入脚本来做，content script 只往 <html> 上
+// 写开关（`src/logic/commentIpLocation.ts`，与 data-bewly-clean-url 同一套做法）。
 
 const COMMENT_LOCATION_ATTR = 'data-bewly-comment-ip-location'
+const COMMENT_GENDER_ATTR = 'data-bewly-comment-gender'
 const COMMENT_LOCATION_CLASS = 'bewly-comment-location'
+const COMMENT_GENDER_CLASS = 'bewly-comment-gender'
 // 评论组件的宿主，动态页用的是 webview 版
 const COMMENT_HOST_SELECTOR = 'bili-comments, bili-comments-webview'
 // 各个版本的组件把回复数据挂在不同字段上，挨个试
@@ -225,20 +227,31 @@ function isCommentLocationEnabled() {
   return document.documentElement.getAttribute(COMMENT_LOCATION_ATTR) === 'true'
 }
 
-/** 从评论操作按钮出发，沿 shadow host 链往上找挂着这条评论数据的那一层，取 IP 属地 */
-function resolveCommentLocation(el) {
+function isCommentGenderEnabled() {
+  return document.documentElement.getAttribute(COMMENT_GENDER_ATTR) === 'true'
+}
+
+/** 从评论操作按钮出发，沿 shadow host 链往上找挂着这条评论数据的那一层，取属地与性别 */
+function resolveCommentMeta(el) {
   let node = el
   for (let hop = 0; node && hop < COMMENT_HOST_HOPS; hop++) {
     for (const key of COMMENT_DATA_KEYS) {
       const data = node[key]
-      const location = data && data.reply_control && data.reply_control.location
-      if (typeof location === 'string' && location)
-        return location
+      if (!data || typeof data !== 'object')
+        continue
+
+      const location = data.reply_control && data.reply_control.location
+      const gender = data.member && data.member.sex
+      const hasLocation = typeof location === 'string' && location
+      // 「保密」照实显示：它是多数派，藏掉的话看着就像这儿没生效
+      const hasGender = typeof gender === 'string' && gender
+      if (hasLocation || hasGender)
+        return { location: hasLocation ? location : '', gender: hasGender ? gender : '' }
     }
     const root = node.getRootNode ? node.getRootNode() : null
     node = root && root.host ? root.host : node.parentElement
   }
-  return ''
+  return { location: '', gender: '' }
 }
 
 // 组件用 20px 的块间距排点赞、回复这些操作，量一次复用；属地跟在时间后面，间距取一半
@@ -256,26 +269,44 @@ function measureCommentBlockGap(shadowRoot) {
   return commentBlockGap || '16px'
 }
 
-function injectCommentLocation(actionButtons) {
+/** 属地与性别是同一个位置上的两小段文字，样式一样，插入顺序就是它们的先后 */
+function makeCommentMetaSpan(className, text, shadowRoot) {
+  const span = document.createElement('span')
+  span.className = className
+  span.textContent = text
+  // shadow 里用不上扩展的样式表，所以写行内；--text3 是组件自己用的次要文字色，跟着主题走
+  span.style.cssText = `margin-left:calc(${measureCommentBlockGap(shadowRoot)} / 2);color:var(--text3,#9499a0);font-size:inherit;white-space:nowrap;`
+  return span
+}
+
+function injectCommentMeta(actionButtons) {
   const shadowRoot = actionButtons.shadowRoot
   // 已经插过就不再插：lit 重渲染后这里要能补回来，所以判重看 DOM 而不是看标记
-  if (!shadowRoot || shadowRoot.querySelector(`.${COMMENT_LOCATION_CLASS}`))
+  if (!shadowRoot
+    || shadowRoot.querySelector(`.${COMMENT_LOCATION_CLASS}`)
+    || shadowRoot.querySelector(`.${COMMENT_GENDER_CLASS}`)) {
     return
+  }
 
   const pubdate = shadowRoot.querySelector('#pubdate')
   if (!pubdate)
     return
 
-  const location = resolveCommentLocation(actionButtons)
-  if (!location)
+  const meta = resolveCommentMeta(actionButtons)
+  const showLocation = isCommentLocationEnabled() && meta.location
+  const showGender = isCommentGenderEnabled() && meta.gender
+  if (!showLocation && !showGender)
     return
 
-  const span = document.createElement('span')
-  span.className = COMMENT_LOCATION_CLASS
-  span.textContent = location
-  // shadow 里用不上扩展的样式表，所以写行内；--text3 是组件自己用的次要文字色，跟着主题走
-  span.style.cssText = `margin-left:calc(${measureCommentBlockGap(shadowRoot)} / 2);color:var(--text3,#9499a0);font-size:inherit;white-space:nowrap;`
-  pubdate.after(span)
+  let anchor = pubdate
+  // 属地关掉时，性别就落在属地本该在的地方（时间后面）
+  if (showLocation) {
+    const locationSpan = makeCommentMetaSpan(COMMENT_LOCATION_CLASS, meta.location, shadowRoot)
+    anchor.after(locationSpan)
+    anchor = locationSpan
+  }
+  if (showGender)
+    anchor.after(makeCommentMetaSpan(COMMENT_GENDER_CLASS, meta.gender, shadowRoot))
 }
 
 function setupCommentIpLocation() {
@@ -297,7 +328,10 @@ function setupCommentIpLocation() {
           continue
         for (const node of mutation.addedNodes) {
           // 编辑器里打字引发的抖动不算新内容；自己插进去的属地更不算，不然会自己触发自己
-          if (node.nodeType === 1 && !node.isContentEditable && !node.classList.contains(COMMENT_LOCATION_CLASS)) {
+          if (node.nodeType === 1
+            && !node.isContentEditable
+            && !node.classList.contains(COMMENT_LOCATION_CLASS)
+            && !node.classList.contains(COMMENT_GENDER_CLASS)) {
             scheduleWalk()
             return
           }
@@ -310,7 +344,7 @@ function setupCommentIpLocation() {
 
   function walkElement(el) {
     if (el.localName === 'bili-comment-action-buttons-renderer')
-      injectCommentLocation(el)
+      injectCommentMeta(el)
 
     // querySelectorAll 穿不过 shadow 边界，所以每碰到一层 shadow root 就自己走下去
     if (el.shadowRoot) {
@@ -375,14 +409,14 @@ function setupCommentIpLocation() {
     }
   }
 
-  /** 收回已插进去的属地。shadow 里的节点 querySelectorAll 到不了，只能自己穿进去找 */
-  function removeLocations(root) {
-    for (const el of root.querySelectorAll(`.${COMMENT_LOCATION_CLASS}`))
+  /** 收回已插进去的属地与性别。shadow 里的节点 querySelectorAll 到不了，只能自己穿进去找 */
+  function removeCommentMetas(root) {
+    for (const el of root.querySelectorAll(`.${COMMENT_LOCATION_CLASS}, .${COMMENT_GENDER_CLASS}`))
       el.remove()
 
     for (const el of root.querySelectorAll('*')) {
       if (el.shadowRoot)
-        removeLocations(el.shadowRoot)
+        removeCommentMetas(el.shadowRoot)
     }
   }
 
@@ -401,13 +435,13 @@ function setupCommentIpLocation() {
 
     for (const host of boundHosts) {
       if (host.shadowRoot)
-        removeLocations(host.shadowRoot)
+        removeCommentMetas(host.shadowRoot)
     }
     release()
   }
 
   function syncWithFlag() {
-    if (isCommentLocationEnabled())
+    if (isCommentLocationEnabled() || isCommentGenderEnabled())
       enable()
     else
       disable()
@@ -415,13 +449,57 @@ function setupCommentIpLocation() {
 
   new MutationObserver(syncWithFlag).observe(document.documentElement, {
     attributes: true,
-    attributeFilter: [COMMENT_LOCATION_ATTR],
+    attributeFilter: [COMMENT_LOCATION_ATTR, COMMENT_GENDER_ATTR],
   })
 
   syncWithFlag()
 }
 
 setupCommentIpLocation()
+
+// ============================ 评论区净化 ============================
+// 整个评论区不显示。评论区是页面自己那颗组件树渲染的（`#commentapp > bili-comments`，番剧页是
+// `#comment-module`），藏起来就好；开关写在 <html> 的 data-bewly-comment-cleanup 上
+// （`src/logic/commentCleanup.ts`），与上面那条通道同一套。
+
+const COMMENT_CLEANUP_ATTR = 'data-bewly-comment-cleanup'
+// 播放页 / 番剧页的评论区是一个容器，动态页与空间页另有名字（`.bili-comment-container` 那一套）。
+// 开关就一个，所以四处都算上。
+const COMMENT_SECTION_SELECTOR = '#commentapp, #comment-module, .bili-comment-container, .comment-wrap bili-comments'
+
+function isCommentSectionHidden() {
+  const raw = document.documentElement.getAttribute(COMMENT_CLEANUP_ATTR)
+  if (!raw)
+    return false
+
+  try {
+    return !!JSON.parse(raw).hideSection
+  }
+  catch {
+    return false
+  }
+}
+
+function setupCommentCleanup() {
+  const styleEl = document.createElement('style')
+  styleEl.id = 'bewly-comment-cleanup'
+  document.documentElement.appendChild(styleEl)
+
+  const publish = () => {
+    styleEl.textContent = isCommentSectionHidden()
+      ? `${COMMENT_SECTION_SELECTOR} { display: none !important; }`
+      : ''
+  }
+
+  new MutationObserver(publish).observe(document.documentElement, {
+    attributes: true,
+    attributeFilter: [COMMENT_CLEANUP_ATTR],
+  })
+
+  publish()
+}
+
+setupCommentCleanup()
 
 // ============================ 弹幕等级过滤 ============================
 // 弹幕分段由播放器自己在主世界用 XHR 拉（`/x/v2/dm/wbi/web/seg.so`），所以只有这里能换掉它拿到的字节。
@@ -642,16 +720,65 @@ function setupDanmakuLevelFilter() {
 setupDanmakuLevelFilter()
 
 // ============================ 接口响应改写 ============================
-// 评论和动态都是页面自己请求的，过滤只能在这一层做：把 JSON 读出来、丢掉要丢的条目、再放回去。
-// fetch 与 XHR 两条路都装上——走哪条是 B 站自己的事，页面上两种都有。
+// 评论、动态、推荐位、搜索都是页面自己请求的，过滤只能在这一层做：把 JSON 读出来、丢掉要丢的条目、
+// 再放回去。fetch 与 XHR 两条路都装上——走哪条是 B 站自己的事，页面上两种都有。
+//
+// **只装一套钩子**：每个特性往下面那张表里登记一条规则，钩子在最后统一装一次。曾经是每个特性各装
+// 一套，于是同一次响应要穿过十来层包装（每层一次正则、一次函数调用），而页面每读一次 `responseText`
+// 都要把整条链走一遍。现在不管登记了多少条规则，链子都只有一层。
 //
 // 一次请求只过滤一次：页面可能把 response 读好几遍，改两次就等于把已经过滤过的再过滤一遍。
 
+/** @type {{ shouldFilter: (url: string) => boolean, filter: (payload: any) => any }[]} */
+const jsonResponseRules = []
+
 /**
+ * 登记一条规则。谁需要改写响应就调它，钩子由 `installJsonResponseHooks` 统一装。
+ *
  * @param shouldFilter 这条请求归不归这套规则管
  * @param filter 拿到解析好的 JSON，返回改过的 payload；返回 null 表示不用改
  */
 function setupJsonResponseFilter(shouldFilter, filter) {
+  jsonResponseRules.push({ shouldFilter, filter })
+}
+
+/** 规则自己炸了不能连累页面：当作「不用改」。 */
+function filterJsonPayload(rule, payload) {
+  try {
+    return rule.filter(payload) || null
+  }
+  catch {
+    return null
+  }
+}
+
+/**
+ * 这条 URL 认领的规则都过一遍（规则各管各的接口，今天不会有两条同时命中一条 URL，但按登记顺序
+ * 逐条问过更稳）。一条都没改动就返回 null，调用方据此原样放行。
+ */
+function applyJsonRules(url, payload) {
+  let current = payload
+  let changed = false
+
+  for (const rule of jsonResponseRules) {
+    if (!rule.shouldFilter(url))
+      continue
+
+    const filtered = filterJsonPayload(rule, current)
+    if (filtered) {
+      current = filtered
+      changed = true
+    }
+  }
+
+  return changed ? current : null
+}
+
+/** 把上面那张表接到页面的请求上，只接一次；一条规则都没有时什么都不装。 */
+function installJsonResponseHooks() {
+  if (!jsonResponseRules.length)
+    return
+
   if (typeof window.fetch === 'function') {
     const originalFetch = window.fetch.bind(window)
     window.fetch = function (...args) {
@@ -663,8 +790,6 @@ function setupJsonResponseFilter(shouldFilter, filter) {
         url = input.url
 
       const result = originalFetch(...args)
-      if (!shouldFilter(url))
-        return result
 
       return result.then(async (response) => {
         if (!response || typeof response.json !== 'function')
@@ -678,7 +803,7 @@ function setupJsonResponseFilter(shouldFilter, filter) {
           return response
         }
 
-        const filtered = filter(payload)
+        const filtered = applyJsonRules(url, payload)
         if (!filtered)
           return response
 
@@ -710,20 +835,21 @@ function setupJsonResponseFilter(shouldFilter, filter) {
     }
 
     function readFiltered(xhr, value) {
-      if (xhr.readyState !== 4 || !shouldFilter(xhr.__bewlyJsonUrl || ''))
+      if (xhr.readyState !== 4)
         return value
       if (xhr.__bewlyJsonFiltered !== undefined)
         return xhr.__bewlyJsonFiltered
 
+      const url = xhr.__bewlyJsonUrl || ''
       let result = value
       try {
         if (typeof value === 'string') {
-          const filtered = filter(JSON.parse(value))
+          const filtered = applyJsonRules(url, JSON.parse(value))
           if (filtered)
             result = JSON.stringify(filtered)
         }
         else if (value && typeof value === 'object' && !(value instanceof ArrayBuffer)) {
-          const filtered = filter(value)
+          const filtered = applyJsonRules(url, value)
           if (filtered)
             result = filtered
         }
@@ -828,8 +954,8 @@ function readJsonAttribute(attr) {
 
 // ============================ 评论区过滤 ============================
 // 评论（含楼中楼）由页面自己请求，返回的 JSON 里带着内容、UP 主名和 UID —— UID 在 DOM 上根本
-// 拿不到，所以过滤只能在数据这层做。开关与四条名单由 content script 序列化成 JSON 写在 <html> 上
-// （`src/logic/commentFilter.ts`），与评论区 IP 属地同一套通道。
+// 拿不到，所以过滤只能在数据这层做。开关、四条名单与另外两条单条规则由 content script 序列化成
+// JSON 写在 <html> 上（`src/logic/commentFilter.ts`），与评论区 IP 属地同一套通道。
 //
 // 注意这是**不看**评论内容之外的：命中的评论连同它下面的楼中楼一起消失，楼里单独命中的也会掉。
 
@@ -837,6 +963,8 @@ const COMMENT_FILTER_ATTR = 'data-bewly-comment-filter'
 const COMMENT_REPLY_RE = /\/x\/v2\/reply\/(?:wbi\/)?(?:main|reply)(?:[/?]|$)/
 /** 话题在评论里就是内容中成对的 `#` 之间那一段。 */
 const COMMENT_TOPIC_RE = /#([^#\n]{1,40})#/g
+/** 带货链接都长在这个域名下。 */
+const COMMENT_GOODS_PREFIX = 'https://gaoneng.bilibili.com/tetris'
 
 function readCommentFilterRules() {
   const parsed = readJsonAttribute(COMMENT_FILTER_ATTR)
@@ -844,14 +972,69 @@ function readCommentFilterRules() {
     return null
 
   const rules = {
+    onlyAt: !!parsed.onlyAt,
+    goods: !!parsed.goods,
     content: compileKeywords(parsed.content, 'contains'),
     user: compileKeywords(parsed.user, 'exact'),
     uid: compileKeywords(parsed.uid, 'exact'),
     topic: compileKeywords(parsed.topic, 'contains'),
   }
 
-  // 开关开着但四条名单都空着，等于没开
-  return Object.values(rules).every(isEmptyKeywords) ? null : rules
+  // 开关开着但两条单条规则都关着、四条名单也空着，等于没开
+  const nothingInLists = [rules.content, rules.user, rules.uid, rules.topic].every(isEmptyKeywords)
+  return nothingInLists && !rules.onlyAt && !rules.goods ? null : rules
+}
+
+/**
+ * 整条评论只有「@某人」、别的什么都没有。
+ *
+ * 写成「按空白切开，每一段都是 @ 开头」而不是一条正则：`(@\S+\s?)+` 这种套着量词的正则会在长评论上
+ * 回溯到爆，而这里的输入是别人的评论，长度不由我们说了算。
+ */
+function isOnlyAtComment(message) {
+  const text = String(message == null ? '' : message).trim()
+  if (!text.startsWith('@'))
+    return false
+
+  return text.split(/\s+/).every(part => part.startsWith('@') && part.length > 1)
+}
+
+/** 蓝链里带着商品字段，或者干脆就指着带货域名。 */
+function hasGoodsLink(urls) {
+  if (!urls || typeof urls !== 'object')
+    return false
+
+  for (const url of Object.values(urls)) {
+    if (!url || typeof url !== 'object')
+      continue
+
+    const extra = url.extra
+    if (extra && typeof extra === 'object') {
+      // 这两个字段不一定在：`Number(undefined)` 是 NaN，直接拿来跟 0 比会把「有 extra 但没带货」
+      // 的蓝链全判成带货
+      const itemId = Number(extra.goods_item_id)
+      if (Number(extra.goods_cm_control) === 1 || (Number.isFinite(itemId) && itemId !== 0))
+        return true
+    }
+    const schema = url.app_url_schema || url.app_url_schema_h5
+    if (typeof schema === 'string' && schema.startsWith(COMMENT_GOODS_PREFIX))
+      return true
+  }
+
+  return false
+}
+
+/** 带货评论：挂着商品卡、正文里带着货链接，或蓝链里带着商品字段。 */
+function isGoodsComment(reply) {
+  const content = reply.content || {}
+  if (content.card_info)
+    return true
+
+  const message = content.message
+  if (typeof message === 'string' && message.includes(COMMENT_GOODS_PREFIX))
+    return true
+
+  return hasGoodsLink(content.urls)
 }
 
 function hasMatchedTopic(matcher, message) {
@@ -874,13 +1057,18 @@ function shouldDropComment(reply, rules) {
     return false
 
   const member = reply.member || {}
-  if (matchKeywords(rules.content, reply.content && reply.content.message))
+  const message = reply.content && reply.content.message
+  if (rules.goods && isGoodsComment(reply))
+    return true
+  if (rules.onlyAt && isOnlyAtComment(message))
+    return true
+  if (matchKeywords(rules.content, message))
     return true
   if (matchKeywords(rules.user, member.uname))
     return true
   if (matchKeywords(rules.uid, member.mid == null ? '' : String(member.mid)))
     return true
-  return hasMatchedTopic(rules.topic, reply.content && reply.content.message)
+  return hasMatchedTopic(rules.topic, message)
 }
 
 /** 一层一层来：这一层的评论掉了，它下面的楼中楼跟着掉；楼里单独命中的自己掉。 */
@@ -928,7 +1116,7 @@ function filterCommentPayload(payload) {
 
 function setupCommentFilter() {
   setupJsonResponseFilter(
-    url => COMMENT_REPLY_RE.test(typeof url === 'string' ? url : ''),
+    url => COMMENT_REPLY_RE.test(typeof url === 'string' ? url : '') && !!readCommentFilterRules(),
     filterCommentPayload,
   )
 }
@@ -1217,12 +1405,452 @@ function filterMomentsPayload(payload) {
 
 function setupMomentsFilter() {
   setupJsonResponseFilter(
-    url => MOMENTS_FEED_RE.test(typeof url === 'string' ? url : ''),
+    url => MOMENTS_FEED_RE.test(typeof url === 'string' ? url : '') && !!readMomentsRules(),
     filterMomentsPayload,
   )
 }
 
 setupMomentsFilter()
+
+// ============================ 视频下方推荐过滤 ============================
+// 推荐位由页面自己请求（`/x/web-interface/archive/related`），其中有两件事只有接口那份数据说得清：
+// - 充电专属的条目上带着 `charging_pay`（实测：普通条目连这个字段都没有）；
+// - 投稿之外的内容（番剧、课程等）`ai_rcmd.goto` 不是 `av`，另外还带 `is_ogv`。
+// 上面两件事在渲染出来的卡片上都没有痕迹（卡片长得一模一样），所以只能在这一层清。
+//
+// 推广位与「整个推荐位都不要」不在这里：那两种卡片是页面自己插进 DOM 的，由 content script 按
+// 卡片类名处理（`src/logic/videoPageRecommendationFilter.ts`）。
+//
+// 开关写在 <html> 的 data-bewly-video-relate-filter 上（`src/logic/videoPageRelateFilter.ts`）。
+
+const VIDEO_RELATE_FILTER_ATTR = 'data-bewly-video-relate-filter'
+const VIDEO_RELATE_RE = /\/x\/web-interface\/archive\/related(?:[/?]|$)/
+
+function readVideoRelateRules() {
+  const parsed = readJsonAttribute(VIDEO_RELATE_FILTER_ATTR)
+  if (!parsed)
+    return null
+  if (!parsed.chargeExclusive && !parsed.onlyUploader)
+    return null
+
+  return { chargeExclusive: !!parsed.chargeExclusive, onlyUploader: !!parsed.onlyUploader }
+}
+
+/** 充电专属：`charging_pay` 出现即算，只有明摆着的 0 / false / 空才不算。 */
+function isChargeExclusiveItem(item) {
+  const flag = item.charging_pay
+  if (flag === undefined || flag === null || flag === false || flag === '' || flag === '0' || flag === 0)
+    return false
+
+  return true
+}
+
+/** 投稿视频：`ai_rcmd.goto` 是 `av`。没有这个字段的按投稿算——认不出的条目不删。 */
+function isUploaderVideoItem(item) {
+  if (item.is_ogv)
+    return false
+
+  const goto = item.ai_rcmd && item.ai_rcmd.goto
+  return !goto || goto === 'av'
+}
+
+function shouldDropRelateItem(item, rules) {
+  if (!item || typeof item !== 'object')
+    return false
+  if (rules.chargeExclusive && isChargeExclusiveItem(item))
+    return true
+  if (rules.onlyUploader && !isUploaderVideoItem(item))
+    return true
+
+  return false
+}
+
+function filterRelatePayload(payload) {
+  const rules = readVideoRelateRules()
+  const list = payload && payload.data
+  if (!rules || !Array.isArray(list))
+    return null
+
+  const kept = list.filter(item => !shouldDropRelateItem(item, rules))
+  if (kept.length === list.length)
+    return null
+
+  payload.data = kept
+  return payload
+}
+
+function setupVideoRelateFilter() {
+  setupJsonResponseFilter(
+    url => VIDEO_RELATE_RE.test(typeof url === 'string' ? url : '') && !!readVideoRelateRules(),
+    filterRelatePayload,
+  )
+}
+
+setupVideoRelateFilter()
+
+// ============================ 搜索页净化 ============================
+// 搜索结果是页面自己请求的，清在响应里谁也看不见；而且「这条结果是什么类型」「UP 主的 UID 是多少」
+// 在渲染出来的卡片上读不到，只有接口那份数据说得清。开关、类型清单与三条名单由 content script
+// 序列化成 JSON 写在 <html> 上（`src/logic/searchFilter.ts`）。
+//
+// 网页端搜索页用的是这几个接口：
+// - 综合搜索 `/x/web-interface/wbi/search/all/v2`：结果按 `result_type` 分组，组里每条也带 `type`；
+// - 分类搜索 `/x/web-interface/wbi/search/type`：`data.result[]` 是一条条结果；
+// - 热搜与发现 `/x/web-interface/wbi/search/square`：网页端 `data` 是个对象（`trending` / `recommend`），
+//   每一块的 `list` 就是那串词；App 那边是 `data[]` + `type` + `data.list`，两种都认；
+// - 默认关键词 `/x/web-interface/wbi/search/default`：搜索框里那个默认词就是 `data.name`。
+
+const SEARCH_FILTER_ATTR = 'data-bewly-search-filter'
+const SEARCH_ALL_RE = /\/x\/web-interface\/(?:wbi\/)?search\/all\/v2(?:[/?]|$)/
+const SEARCH_TYPE_RE = /\/x\/web-interface\/(?:wbi\/)?search\/type(?:[/?]|$)/
+// 热搜与发现在网页端是 `x/web-interface` 那一份，App 那边用的是 `x/v2`，两个都认
+const SEARCH_SQUARE_RE = /\/x\/(?:web-interface|v2)\/(?:wbi\/)?search\/square(?:[/?]|$)/
+const SEARCH_DEFAULT_RE = /\/x\/web-interface\/(?:wbi\/)?search\/default(?:[/?]|$)/
+const SEARCH_RECOMMEND_RE = /\/x\/v2\/search\/recommend(?:[/?]|$)/
+const SEARCH_DEFAULTWORDS_RE = /\/x\/v2\/search\/defaultwords(?:[/?]|$)/
+
+/**
+ * 设置里那一格（按 B 站自己的类型名写）对应的接口类型标识。
+ *
+ * 网页端综合搜索实际会返回的只有 `video`、`bili_user`、`media_bangumi`、`media_ft`、`web_game`、
+ * `activity`、`brand_ad` 这几种；剩下的几格（漫画、频道、话题、合集、动态）是 B 站自己的分类，
+ * 网页端把那些内容放在分类搜索里，名字照它的枚举写在这里——出现了就能清掉，没出现就什么都不动。
+ * 相关搜索网页端没有对应的结果，那一格今天不会命中。
+ *
+ * 「热搜横幅」对应的是结果页最上面那一块：网页端把活动卡（`activity`）与游戏卡（`web_game`）
+ * 拼成一个列表，位置就是热搜横幅那个位置；游戏卡另有一格管它，两格都勾上就整块清掉。
+ */
+const SEARCH_RESULT_TYPE_IDS = {
+  hot_banner: ['activity', 'hot_banner', 'banner'],
+  video: ['video'],
+  related_search: ['related_search'],
+  game: ['game', 'web_game', 'esports'],
+  user: ['bili_user', 'user'],
+  ad: ['ad', 'brand_ad'],
+  comic: ['comic'],
+  channel: ['channel'],
+  bangumi: ['media_bangumi', 'media_ft', 'ogv_pgc', 'bgm_media', 'pgc_media'],
+  subject: ['topic', 'subject'],
+  collection: ['collection'],
+  article: ['article'],
+  twitter: ['dynamic', 'dynamic_new', 'twitter'],
+  live: ['live', 'live_room', 'live_user'],
+  ketang: ['ketang'],
+}
+
+function readSearchRules() {
+  const parsed = readJsonAttribute(SEARCH_FILTER_ATTR)
+  if (!parsed)
+    return null
+
+  const purify = Array.isArray(parsed.purify) ? parsed.purify : []
+  const types = Array.isArray(parsed.types) ? parsed.types : []
+  const keywords = parsed.enabledKeywords
+    ? {
+        content: compileKeywords(parsed.content, 'contains'),
+        user: compileKeywords(parsed.user, 'exact'),
+        uid: compileKeywords(parsed.uid, 'exact'),
+      }
+    : null
+
+  const hasKeywords = keywords && !Object.values(keywords).every(isEmptyKeywords)
+  if (!purify.length && !types.length && !hasKeywords)
+    return null
+
+  return { purify, types, keywords: hasKeywords ? keywords : null }
+}
+
+/** 标题带 `<em class="keyword">` 高亮，匹配前先摘掉。 */
+function stripSearchHighlight(text) {
+  return String(text == null ? '' : text).replace(/<[^>]*>/g, '')
+}
+
+/** 各种结果类型的字段名不一样，挨个试。 */
+function searchItemTitle(item) {
+  return stripSearchHighlight(item.title || item.uname || item.name || '')
+}
+
+function searchItemUp(item) {
+  return stripSearchHighlight(item.author || item.uname || item.up_name || '')
+}
+
+function searchItemUid(item) {
+  const mid = item.mid == null ? item.uid : item.mid
+  return mid == null ? '' : String(mid)
+}
+
+function matchesSearchKeywords(item, keywords) {
+  if (!keywords)
+    return false
+  if (matchKeywords(keywords.content, searchItemTitle(item)))
+    return true
+  if (matchKeywords(keywords.user, searchItemUp(item)))
+    return true
+
+  return matchKeywords(keywords.uid, searchItemUid(item))
+}
+
+/** 这一条结果的类型标识，`type` 与 `result_type` 都算。 */
+function searchItemTypeId(item) {
+  return String(item.type || item.result_type || '')
+}
+
+/** 这一格设置落到哪些类型标识上。 */
+function blockedSearchTypeIds(types) {
+  const ids = []
+  for (const key of types) {
+    const mapped = SEARCH_RESULT_TYPE_IDS[key]
+    if (mapped)
+      ids.push(...mapped)
+  }
+  return ids
+}
+
+function shouldDropSearchItem(item, rules, blockedIds) {
+  if (!item || typeof item !== 'object')
+    return false
+  if (blockedIds.length && blockedIds.includes(searchItemTypeId(item)))
+    return true
+
+  return matchesSearchKeywords(item, rules.keywords)
+}
+
+/** 综合搜索：整组分类型，组里每条也带自己的类型，两个都要看。 */
+function filterSearchAllPayload(payload, rules, blockedIds) {
+  const groups = payload && payload.data && payload.data.result
+  if (!Array.isArray(groups))
+    return null
+
+  let changed = false
+  const keptGroups = []
+
+  for (const group of groups) {
+    const groupType = String((group && group.result_type) || '')
+    if (groupType && blockedIds.includes(groupType)) {
+      changed = true
+      continue
+    }
+
+    const items = group && group.data
+    if (!Array.isArray(items)) {
+      keptGroups.push(group)
+      continue
+    }
+
+    const kept = items.filter(item => !shouldDropSearchItem(item, rules, blockedIds))
+    if (kept.length !== items.length) {
+      changed = true
+      group.data = kept
+      // 清空的那一组整个不要：留着一个空壳，页面上会多出一段空白
+      if (!kept.length && items.length)
+        continue
+    }
+    keptGroups.push(group)
+  }
+
+  if (!changed)
+    return null
+
+  payload.data.result = keptGroups
+  return payload
+}
+
+/** 分类搜索：`data.result[]` 是一条条结果，类型看每条自己。 */
+function filterSearchTypePayload(payload, rules, blockedIds) {
+  const items = payload && payload.data && payload.data.result
+  if (!Array.isArray(items))
+    return null
+
+  const kept = items.filter(item => !shouldDropSearchItem(item, rules, blockedIds))
+  if (kept.length === items.length)
+    return null
+
+  payload.data.result = kept
+  return payload
+}
+
+/** 推荐理由（「因为你关注了…」）跟着发现一起清。 */
+function stripSearchRecommendReason(list) {
+  let changed = false
+  for (const entry of list) {
+    if (entry && entry.recommend_reason) {
+      delete entry.recommend_reason
+      changed = true
+    }
+  }
+  return changed
+}
+
+/**
+ * 热搜与发现。同一个接口有两种形状，两种都认：
+ * - 网页端（实测）：`data` 是个对象，键就是那一块的名字（`trending`，登录后还有 `recommend`），
+ *   每一块的 `list` 就是那串词；
+ * - App 那边（以及老网页端）：`data` 是数组，每一块自带 `type`，词在 `data.list` 里。
+ *
+ * 清法一样：那一块的 list 清空。
+ */
+function filterSearchSquarePayload(payload, purify) {
+  const data = payload && payload.data
+  if (!data || typeof data !== 'object')
+    return null
+
+  let changed = false
+
+  const purifyBlock = (type, block) => {
+    const list = block && block.list
+    if (!Array.isArray(list))
+      return
+
+    if (purify.includes(type)) {
+      block.list = []
+      changed = true
+    }
+    else if (type === 'recommend' && stripSearchRecommendReason(list)) {
+      changed = true
+    }
+  }
+
+  if (Array.isArray(data)) {
+    for (const block of data) {
+      if (block && typeof block === 'object')
+        purifyBlock(String(block.type || ''), block.data)
+    }
+  }
+  else {
+    for (const [type, block] of Object.entries(data))
+      purifyBlock(type, block)
+  }
+
+  return changed ? payload : null
+}
+
+function filterSearchRecommendPayload(payload, purify) {
+  const list = payload && payload.data && payload.data.list
+  if (!purify.includes('recommend') || !Array.isArray(list) || !list.length)
+    return null
+
+  payload.data.list = []
+  return payload
+}
+
+function filterSearchDefaultPayload(payload, purify) {
+  const data = payload && payload.data
+  if (!purify.includes('words') || !data || typeof data !== 'object')
+    return null
+  if (!data.name && !data.show_name)
+    return null
+
+  // 搜索框里那个默认词就是它，清掉等于让它没有默认词
+  data.name = ''
+  data.show_name = ''
+  return payload
+}
+
+function setupSearchFilter() {
+  const withRules = (url, filter) => {
+    setupJsonResponseFilter(
+      // 什么都没配时不认领这条请求：省掉对每个搜索响应的一次 JSON.parse（搜索响应不小，
+      // 而且这是默认状态——没开任何净化的人不该为它付这份钱）
+      candidate => url.test(typeof candidate === 'string' ? candidate : '') && !!readSearchRules(),
+      (payload) => {
+        const rules = readSearchRules()
+        if (!rules)
+          return null
+
+        return filter(payload, rules)
+      },
+    )
+  }
+
+  withRules(SEARCH_ALL_RE, (payload, rules) => filterSearchAllPayload(payload, rules, blockedSearchTypeIds(rules.types)))
+  withRules(SEARCH_TYPE_RE, (payload, rules) => filterSearchTypePayload(payload, rules, blockedSearchTypeIds(rules.types)))
+  withRules(SEARCH_SQUARE_RE, (payload, rules) => filterSearchSquarePayload(payload, rules.purify))
+  withRules(SEARCH_RECOMMEND_RE, (payload, rules) => filterSearchRecommendPayload(payload, rules.purify))
+  withRules(SEARCH_DEFAULT_RE, (payload, rules) => filterSearchDefaultPayload(payload, rules.purify))
+  withRules(SEARCH_DEFAULTWORDS_RE, (payload, rules) => filterSearchDefaultPayload(payload, rules.purify))
+}
+
+setupSearchFilter()
+
+// ============================ 视频页自动点赞 ============================
+// 点赞有个前提：得先知道视频是不是已经赞过——那枚按钮是个开关，点反了就是把用户的赞取消，而未赞的
+// 视频在页面拿到三元组状态前后长得一模一样（DOM 上看不出「状态还没到」）。
+//
+// 网页端自己的答案是 `/x/web-interface/archive/relation`，而且它**只在登录时才发这个请求**
+// （页面里 `getTripleState` 先看 `userInfo.isLogin`）。所以这里盯着页面自己那次请求的响应，把结果
+// 写进 <html>，由 content script（`src/logic/videoPageAutoLike.ts`）决定要不要点。
+//
+// 这样连竞态也没有了：页面还没拿到登录态时点按钮，B 站只会弹登录框、什么都不做；而请求没发出来，
+// 我们就不点。
+
+const AUTOLIKE_ATTR = 'data-bewly-autolike'
+const AUTOLIKE_RELATION_RE = /\/x\/web-interface\/archive\/relation(?:[/?]|$)/
+
+/** 从请求 URL 里取 bvid。取不到就不发布：状态必须知道是哪个视频的。 */
+function bvidFromRelatedUrl(url) {
+  const match = String(url || '').match(/[?&]bvid=(BV[0-9A-Za-z]+)/)
+  return match ? match[1] : ''
+}
+
+function publishAutoLikeState(url, payload) {
+  const bvid = bvidFromRelatedUrl(url)
+  if (!bvid || !payload || payload.code !== 0 || !payload.data)
+    return
+
+  document.documentElement.setAttribute(AUTOLIKE_ATTR, JSON.stringify({
+    bvid,
+    like: !!payload.data.like,
+  }))
+}
+
+function setupAutoLikeState() {
+  if (typeof window.fetch === 'function') {
+    const originalFetch = window.fetch.bind(window)
+    window.fetch = function (...args) {
+      const input = args[0]
+      let url = ''
+      if (typeof input === 'string')
+        url = input
+      else if (input && typeof input.url === 'string')
+        url = input.url
+
+      const result = originalFetch(...args)
+      // clone 出来读，页面自己那份一个字节都不动；读不动就算了
+      if (AUTOLIKE_RELATION_RE.test(url)) {
+        result
+          .then(response => response.clone().json().then(payload => publishAutoLikeState(url, payload)).catch(() => {}))
+          .catch(() => {})
+      }
+      return result
+    }
+  }
+
+  if (typeof XMLHttpRequest !== 'undefined') {
+    const originalOpen = XMLHttpRequest.prototype.open
+    const originalSend = XMLHttpRequest.prototype.send
+
+    XMLHttpRequest.prototype.open = function (method, url, ...rest) {
+      this.__bewlyRelationUrl = typeof url === 'string' ? url : String(url ?? '')
+      return originalOpen.call(this, method, url, ...rest)
+    }
+
+    XMLHttpRequest.prototype.send = function (...args) {
+      if (AUTOLIKE_RELATION_RE.test(this.__bewlyRelationUrl || '')) {
+        this.addEventListener('load', function () {
+          let payload = null
+          try {
+            payload = this.response && typeof this.response === 'object' ? this.response : JSON.parse(this.responseText)
+          }
+          catch {}
+          publishAutoLikeState(this.__bewlyRelationUrl, payload)
+        })
+      }
+      return originalSend.apply(this, args)
+    }
+  }
+}
+
+setupAutoLikeState()
 
 // ============================ 直播间默认原画 ============================
 // 直播间的播放地址是页面自己求的：进房间时它带 `qn=0`，让服务端自己挑一档（实测落在蓝光）。
@@ -1285,6 +1913,9 @@ function setupLiveOriginalQuality() {
 }
 
 setupLiveOriginalQuality()
+
+// 所有规则登记完了，接口钩子在这里统一装一次（见上面那段注释：一套钩子，多少条规则都只一层）。
+installJsonResponseHooks()
 
 window.___inject = true
 

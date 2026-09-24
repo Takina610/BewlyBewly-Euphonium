@@ -3,7 +3,7 @@ import { runInThisContext } from 'node:vm'
 import { afterEach, expect, it, vi } from 'vitest'
 
 import injectSource from '~/inject/index.js?raw'
-import { COMMENT_IP_LOCATION_ATTR } from '~/logic/commentIpLocation'
+import { COMMENT_GENDER_ATTR, COMMENT_IP_LOCATION_ATTR } from '~/logic/commentIpLocation'
 
 vi.mock('webextension-polyfill', () => {
   const browser = {
@@ -30,6 +30,7 @@ vi.mock('webextension-polyfill', () => {
  * sub-replies one `bili-comment-replies-renderer` deeper.
  */
 const LOCATION_CLASS = 'bewly-comment-location'
+const GENDER_CLASS = 'bewly-comment-gender'
 
 interface Tree {
   actions: HTMLElement
@@ -40,6 +41,7 @@ let host: HTMLElement | undefined
 
 afterEach(() => {
   document.documentElement.removeAttribute(COMMENT_IP_LOCATION_ATTR)
+  document.documentElement.removeAttribute(COMMENT_GENDER_ATTR)
   host?.remove()
   host = undefined
 })
@@ -54,8 +56,8 @@ function shadowOf(element: HTMLElement): ShadowRoot {
   return element.attachShadow({ mode: 'open' })
 }
 
-function replyData(location: string) {
-  return { rpid: 1, reply_control: { location } }
+function replyData(location: string, sex = '') {
+  return { rpid: 1, reply_control: { location }, member: { sex } }
 }
 
 /** Builds the comment tree, returns nothing about it but the two action-button shadow hosts. */
@@ -198,3 +200,65 @@ it('leaves comments that carry no location, and later ones are picked up as they
   await settle()
   expect(pendingRoot.querySelector(`.${LOCATION_CLASS}`)?.textContent).toBe('IP属地：四川')
 })
+
+/**
+ * Gender rides along with the location: same place, same styling, same switch channel. It is its own
+ * switch, so the two have to be able to stand alone — including the case where gender is shown while
+ * the location is not, where it takes the location's place behind the timestamp.
+ *
+ * 「保密」照实显示：它在评论里是多数派，藏掉的话看着就像这儿没生效。
+ */
+it('shows the gender behind the location, private included', async () => {
+  const { actions } = renderCommentTree()
+  startInjectWithSwitchOn()
+
+  // 这一条的数据里有性别
+  const withSex = createElement('bili-comment-action-buttons-renderer', { data: replyData('IP属地：上海', '女') })
+  const withSexRoot = shadowOf(withSex)
+  const pubdate = createElement('div', { id: 'pubdate' })
+  withSexRoot.appendChild(pubdate)
+  actions.parentElement!.appendChild(withSex)
+
+  turnGender(true)
+  await settle()
+
+  const gender = withSexRoot.querySelector(`.${GENDER_CLASS}`)
+  expect(gender?.textContent).toBe('女')
+  expect(gender?.previousElementSibling?.textContent).toBe('IP属地：上海')
+  expect(gender?.getAttribute('style')).toContain('var(--text3')
+
+  // 没公开性别的也显示，评论里这一种最多
+  const privateOne = createElement('bili-comment-action-buttons-renderer', { data: replyData('IP属地：北京', '保密') })
+  const privateRoot = shadowOf(privateOne)
+  privateRoot.appendChild(createElement('div', { id: 'pubdate' }))
+  actions.parentElement!.appendChild(privateOne)
+  await settle()
+  expect(privateRoot.querySelector(`.${GENDER_CLASS}`)?.textContent).toBe('保密')
+})
+
+it('puts the gender where the location would be when only the gender is on', async () => {
+  const { actions } = renderCommentTree()
+  startInjectWithSwitchOn()
+  turnSwitch(false)
+  turnGender(true)
+  await settle()
+
+  const gender = actions.shadowRoot!.querySelector(`.${GENDER_CLASS}`)
+  // 那一条的数据里没写性别，所以这里只检查位置：紧跟时间
+  expect(gender).toBeNull()
+  expect(actions.shadowRoot!.querySelector(`.${LOCATION_CLASS}`)).toBeNull()
+
+  // 换一条有性别的：它落在时间后面，也就是属地本该在的地方
+  const only = createElement('bili-comment-action-buttons-renderer', { data: replyData('', '男') })
+  const onlyRoot = shadowOf(only)
+  onlyRoot.appendChild(createElement('div', { id: 'pubdate' }))
+  actions.parentElement!.appendChild(only)
+  await settle()
+
+  expect(onlyRoot.querySelector(`.${GENDER_CLASS}`)?.textContent).toBe('男')
+  expect(onlyRoot.querySelector(`.${GENDER_CLASS}`)?.previousElementSibling?.id).toBe('pubdate')
+})
+
+function turnGender(on: boolean): void {
+  document.documentElement.setAttribute(COMMENT_GENDER_ATTR, String(on))
+}

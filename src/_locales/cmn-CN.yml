@@ -376,19 +376,65 @@ settings:
   block_top_search_page_ads: 屏蔽 bilibili 搜索页上方的广告
   block_top_search_page_ads_desc: 有时候，搜索结果上方的广告实际上是年末总结或年度报告。如果你不想这些内容被误删除，请禁用此选项。
   block_vip_danmuku_style: 屏蔽大会员弹幕的彩色样式（使其和正常弹幕使用相同样式）
-  video_page_filter_recommendations: 屏蔽视频页相关推荐中命中标题屏蔽词或 UP 黑名单的视频
+  video_page_filter_recommendations: 按关键词过滤（名单与首页共用）
   video_page_filter_numeric_conditions: 同时套用播放量与时长阈值（与首页共用）
+  video_page_remove_charge_exclusive_video: 移除充电专属视频
+  video_page_remove_promoted_videos: 移除推广
+  video_page_only_uploader_videos: 仅 UP 主投稿视频
+  video_page_remove_all_recommendations: 移除所有侧边栏推荐内容
+
+  # 视频页上那些不看内容好坏的净化
+  group_video_page_cleanup: 页面净化
+  group_video_recommendation_filter: 视频下方推荐过滤
+  video_page_auto_like: 自动点赞
+  video_page_removed_popups: 移除视频浮窗
+  video_popup_vote: 投票弹幕
+  video_popup_attention: 三连关注弹幕
+  video_popup_grade: 评分弹幕
+  video_popup_grade_summary: 评分总结弹幕
+  video_popup_link: 关联视频弹幕
+  video_popup_other: 其它
+  video_page_remove_charge_button: 移除充电按钮
+  video_page_block_live_order: 屏蔽直播预约横幅
+  video_page_block_activity_tag: 屏蔽活动标签
+
+  # 搜索页净化
+  group_search_purify: 净化搜索结果
+  search_purify_items: 顶部内容
+  search_purify_words: 默认关键词
+  search_purify_trending: 热搜
+  search_purify_recommend: 发现
+  search_blocked_types: 结果类型
+  search_type_hot_banner: 热搜横幅
+  search_type_video: 投稿视频
+  search_type_related_search: 相关搜索
+  search_type_game: 游戏
+  search_type_user: UP 主
+  search_type_ad: 广告
+  search_type_comic: 漫画
+  search_type_channel: 频道
+  search_type_bangumi: 番剧
+  search_type_subject: 话题
+  search_type_collection: 合集
+  search_type_article: 专栏
+  search_type_twitter: 动态
+  search_type_live: 直播
+  search_type_ketang: 课堂
+  enable_search_keyword_filter: 按关键词过滤
+
   url_trim_settings: 页面 URL 优化
   clean_url_argument: 清理 URL 无用参数（也会自动清理“分享”按钮的无用参数）
   bv_to_av: 将 BV 号转为 AV 号
   comment_settings: 评论区
+  block_comment_section: 屏蔽评论区
   show_comment_ip_location: 显示 IP 属地
-  show_comment_ip_location_desc: >
-    在每条评论的时间后面显示 IP 属地，楼中楼也会显示。属地是发布评论时记录的，不是实时位置。
+  show_comment_gender: 显示性别
   group_user_pages: 顶栏与个人空间
   show_exact_counts: 数量精确显示
   group_comment_filter: 评论区过滤
   enable_comment_filter: 启用过滤
+  comment_filter_only_at: 仅「{'@'}某人」的评论
+  comment_filter_goods: UP 主带货评论
   comment_filter_content: 评论内容（包含匹配）
   comment_filter_content_hint: 关键词，或 /正则/
   comment_filter_user: UP 主（完全匹配）

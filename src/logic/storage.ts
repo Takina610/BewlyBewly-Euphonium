@@ -100,6 +100,26 @@ export interface Settings {
   /** 记住播放速度变化：用户把速度改到多少，下次打开视频页就用多少。 */
   videoPageRememberPlaybackRate: boolean
 
+  /** 进视频页时自动点赞一次（已经赞过的、没登录的都不动）。 */
+  videoPageAutoLike: boolean
+  /** 要清掉的播放器浮窗键，见 `src/logic/videoPageCleanup.ts`。空名单表示什么都不清。 */
+  videoPageRemovedPopups: string[]
+  /** 藏掉 UP 主卡片上的充电按钮。 */
+  videoPageRemoveChargeButton: boolean
+  /** 藏掉播放器里的预约卡（直播 / 首映预告）。 */
+  videoPageBlockLiveOrder: boolean
+  /** 藏掉视频下方的活动条。 */
+  videoPageBlockActivityTag: boolean
+
+  /** 视频下方推荐：充电专属视频不上推荐位。 */
+  videoPageRemoveChargeExclusiveVideo: boolean
+  /** 视频下方推荐：推广卡（游戏、活动、运营位）不上推荐位。 */
+  videoPageRemovePromotedVideos: boolean
+  /** 视频下方推荐：只留 UP 主投稿，番剧等内容一并清掉。 */
+  videoPageOnlyUploaderVideos: boolean
+  /** 视频下方推荐：整个推荐位都不显示。 */
+  videoPageRemoveAllRecommendations: boolean
+
   searchPageDarkenOnSearchFocus: boolean
   searchPageBlurredOnSearchFocus: boolean
   searchPageLogoColor: 'white' | 'themeColor'
@@ -112,6 +132,19 @@ export interface Settings {
   searchPageEnableWallpaperMasking: boolean
   searchPageWallpaperMaskOpacity: number
   searchPageWallpaperBlurIntensity: number
+
+  /**
+   * 搜索页净化：要清掉的那几块，键见 `src/constants/searchPurify.ts`。
+   * 过滤本身由主世界的注入脚本在接口响应上做，见 `src/logic/searchFilter.ts`。
+   */
+  searchPurifyItems: string[]
+  /** 按类型净化搜索结果：要清掉的结果类型，键见 `src/constants/searchPurify.ts`。 */
+  searchBlockedTypes: string[]
+  /** 按关键词净化搜索结果：三条名单，与评论区的同名名单匹配规则相同。 */
+  searchFilterKeywords: boolean
+  searchFilterContent: { keyword: string, remark: string }[]
+  searchFilterUser: { keyword: string, remark: string }[]
+  searchFilterUid: { keyword: string, remark: string }[]
 
   recommendationMode: 'web' | 'app'
   recommendationNoAutoSwitch: boolean
@@ -188,11 +221,19 @@ export interface Settings {
    * （`reply_control.location`），网页端不渲染而已，打开后由主世界的注入脚本把它补到 DOM 上。
    */
   showCommentIpLocation: boolean
+  /** 在属地后面显示性别（`member.sex`）。属地没显示时，性别就占那个位置。 */
+  showCommentGender: boolean
+  /** 整个评论区都不显示。 */
+  blockCommentSection: boolean
   /**
    * 评论区过滤：四条名单分别对评论内容、UP 主名、UID、话题匹配，命中的评论（连同它下面的楼中楼）
    * 由主世界的注入脚本从接口响应里丢掉，见 `src/logic/commentFilter.ts`。
    */
   enableCommentFilter: boolean
+  /** 只说了「@某人」、没有别的内容的评论。 */
+  commentFilterOnlyAt: boolean
+  /** 带着商品卡的评论，也就是 UP 主带货。 */
+  commentFilterGoods: boolean
   commentFilterContent: { keyword: string, remark: string }[]
   commentFilterUser: { keyword: string, remark: string }[]
   commentFilterUid: { keyword: string, remark: string }[]
@@ -306,6 +347,18 @@ export const originalSettings: Settings = {
   videoPageDisableLongPressSpeedUp: false,
   videoPageRememberPlaybackRate: false,
 
+  // 视频页净化：默认一声不响，等用户自己挑要清什么
+  videoPageAutoLike: false,
+  videoPageRemovedPopups: [],
+  videoPageRemoveChargeButton: false,
+  videoPageBlockLiveOrder: false,
+  videoPageBlockActivityTag: false,
+
+  videoPageRemoveChargeExclusiveVideo: false,
+  videoPageRemovePromotedVideos: false,
+  videoPageOnlyUploaderVideos: false,
+  videoPageRemoveAllRecommendations: false,
+
   searchPageDarkenOnSearchFocus: true,
   searchPageBlurredOnSearchFocus: false,
   searchPageLogoColor: 'themeColor',
@@ -318,6 +371,14 @@ export const originalSettings: Settings = {
   searchPageEnableWallpaperMasking: false,
   searchPageWallpaperMaskOpacity: 0,
   searchPageWallpaperBlurIntensity: 0,
+
+  // 空名单：搜索页净化装上了但不动任何东西，等用户自己挑
+  searchPurifyItems: [],
+  searchBlockedTypes: [],
+  searchFilterKeywords: false,
+  searchFilterContent: [],
+  searchFilterUser: [],
+  searchFilterUid: [],
 
   recommendationMode: 'web',
   recommendationNoAutoSwitch: false,
@@ -380,7 +441,11 @@ export const originalSettings: Settings = {
   legacyPlayerLoadingScreen: false,
   videoPageRememberWebFullscreen: true,
   showCommentIpLocation: true,
+  showCommentGender: false,
+  blockCommentSection: false,
   enableCommentFilter: false,
+  commentFilterOnlyAt: false,
+  commentFilterGoods: false,
   commentFilterContent: [],
   commentFilterUser: [],
   commentFilterUid: [],

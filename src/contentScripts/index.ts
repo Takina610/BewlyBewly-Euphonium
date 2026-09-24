@@ -6,6 +6,7 @@ import { createApp } from 'vue'
 import { useDark } from '~/composables/useDark'
 import { BEWLY_MOUNTED } from '~/constants/globalEvents'
 import { settings } from '~/logic'
+import { setupCommentCleanup } from '~/logic/commentCleanup'
 import { setupCommentFilter } from '~/logic/commentFilter'
 import { setupCommentIpLocation } from '~/logic/commentIpLocation'
 import { setupApp } from '~/logic/common-setup'
@@ -14,9 +15,13 @@ import { setupExactCounts } from '~/logic/exactCounts'
 import { setupLiveRoom } from '~/logic/liveRoom'
 import { setupMomentsFilter } from '~/logic/momentsFilter'
 import { setupPlaybackSpeed } from '~/logic/playbackSpeed'
+import { setupSearchFilter } from '~/logic/searchFilter'
 import { setupEarlySlackingMode } from '~/logic/slackingMode'
+import { setupVideoPageAutoLike } from '~/logic/videoPageAutoLike'
+import { setupVideoPageCleanup } from '~/logic/videoPageCleanup'
 import { setupVideoPageDanmakuCount } from '~/logic/videoPageDanmakuCount'
 import { setupVideoPageRecommendationFilter } from '~/logic/videoPageRecommendationFilter'
+import { setupVideoPageRelateFilter } from '~/logic/videoPageRelateFilter'
 import { setupWebFullscreenMemory } from '~/logic/webFullscreenMemory'
 import RESET_BEWLY_CSS from '~/styles/reset.css?raw'
 import { runWhenIdle } from '~/utils/lazyLoad'
@@ -177,9 +182,18 @@ if (isSupportedPages() || isSupportedIframePages() || isStylesOnlyPage) {
   // inject script can only act on the flag once it is on `<html>`.
   setupCommentIpLocation()
 
+  // Same channel, same reason: the whole comment section is hidden by a rule the inject script puts
+  // together, so the flag has to be up before the page finishes laying that section out.
+  setupCommentCleanup()
+
   // Same channel, same reason: the inject script drops matching comments out of the response, and it
   // needs the lists before the first page of comments is asked for.
   setupCommentFilter()
+
+  // And the same again for the search page, whose results (and the hot-search block above them) are
+  // requested as soon as it loads
+  if (/https?:\/\/search\.bilibili\.com/.test(currentUrl))
+    setupSearchFilter()
 
   // And the same again for the dynamic feed, which the page starts asking for as soon as it loads
   setupMomentsFilter()
@@ -191,6 +205,21 @@ if (isSupportedPages() || isSupportedIframePages() || isStylesOnlyPage) {
   // And the recommendation rail, which bilibili renders before our app mounts — the filter has to be
   // watching for it by then, or a card would be seen and then pulled away.
   setupVideoPageRecommendationFilter()
+
+  // The rail of a video page is also filtered from the data side (charge-exclusive videos and anything
+  // that is not an uploaded video), and that response comes back long before our app mounts.
+  if (!isInIframe() && /^https?:\/\/(?:www\.)?bilibili\.com\/video\//.test(currentUrl))
+    setupVideoPageRelateFilter()
+
+  // 自动点赞与净化不排除抽屉（iframe）：抽屉里那也是一整个视频页，用户在那儿看的视频同样要点赞。
+  // 全屏记忆那类要排除，是这个的区别：它会让抽屉去控制外面那一层。
+  if (/^https?:\/\/(?:www\.)?bilibili\.com\/video\//.test(currentUrl))
+    setupVideoPageAutoLike()
+
+  // 净化与点赞分开：浮窗那几种番剧页上也长（评分、评分总结本来就多在那儿），所以两边都管；
+  // 充电按钮与活动条只在投稿视频页上有，多一条规则不碍事。
+  if (isVideoOrBangumiPage())
+    setupVideoPageCleanup()
 
   // The player takes the longest of the lot to mount, so this has to be listening well before it does.
   // The page gate lives here rather than in the module: the drawer's frame renders a video page too,

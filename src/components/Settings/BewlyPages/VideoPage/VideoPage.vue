@@ -1,4 +1,5 @@
 <script lang="ts" setup>
+import { VIDEO_POPUP_ITEMS } from '~/constants/videoPagePopups'
 import { settings } from '~/logic'
 import {
   cleanupPlaybackRateInput,
@@ -12,6 +13,19 @@ import { isVideoOrBangumiPage } from '~/utils/main'
 import SettingsItem from '../../components/SettingsItem.vue'
 import SettingsItemGroup from '../../components/SettingsItemGroup.vue'
 import SlackingNotice from '../../components/SlackingNotice.vue'
+
+function isPopupRemoved(key: string): boolean {
+  return settings.value.videoPageRemovedPopups.includes(key)
+}
+
+function togglePopup(key: string) {
+  const list = settings.value.videoPageRemovedPopups
+  const index = list.indexOf(key)
+  if (index === -1)
+    list.push(key)
+  else
+    list.splice(index, 1)
+}
 
 watch(() => settings.value.legacyPlayerLoadingScreen, () => {
   if (isVideoOrBangumiPage())
@@ -194,11 +208,77 @@ function keepKeysInForm() {}
         <SettingsItem :title="$t('settings.show_loaded_danmaku_count')">
           <Radio v-model="settings.videoPageShowLoadedDanmakuCount" />
         </SettingsItem>
+
+        <!--
+          播放器里的浮窗本身就是几条弹幕动作（投票、三连、评分…），所以跟屏蔽等级摆在一组。
+        -->
+        <SettingsItem :title="$t('settings.video_page_removed_popups')">
+          <template #bottom>
+            <div flex="~ gap-2 wrap">
+              <div
+                v-for="item in VIDEO_POPUP_ITEMS"
+                :key="item.key"
+                flex="~ gap-2 items-center" p="x-4 y-2" rounded="$bew-radius" cursor-pointer duration-300
+                :style="{
+                  background: isPopupRemoved(item.key) ? 'var(--bew-theme-color-20)' : 'var(--bew-fill-1)',
+                  color: isPopupRemoved(item.key) ? 'var(--bew-theme-color)' : 'var(--bew-text-1)',
+                }"
+                @click="togglePopup(item.key)"
+              >
+                {{ $t(item.labelKey) }}
+              </div>
+            </div>
+          </template>
+        </SettingsItem>
+      </SettingsItemGroup>
+
+      <!--
+        这一页上这几项（含下面播放器行为里的自动点赞）在摸鱼模式期间照常生效，而那个模式下整个 tab
+        会被上面的提示替换掉，于是成了「改不了但仍在生效」。用户点名要它们收在这一页上，就这样放着。
+      -->
+      <SettingsItemGroup :title="$t('settings.group_video_page_cleanup')">
+        <SettingsItem :title="$t('settings.video_page_remove_charge_button')">
+          <Radio v-model="settings.videoPageRemoveChargeButton" />
+        </SettingsItem>
+        <SettingsItem :title="$t('settings.video_page_block_live_order')">
+          <Radio v-model="settings.videoPageBlockLiveOrder" />
+        </SettingsItem>
+        <SettingsItem :title="$t('settings.video_page_block_activity_tag')">
+          <Radio v-model="settings.videoPageBlockActivityTag" />
+        </SettingsItem>
+      </SettingsItemGroup>
+
+      <!--
+        视频下方推荐过滤。关键词那一项读的是首页那两张名单，所以标题里点明了共用；
+        数值阈值默认关着——首页合适的阈值搬到这一列长尾视频里容易把整列清空。
+      -->
+      <SettingsItemGroup :title="$t('settings.group_video_recommendation_filter')">
+        <SettingsItem :title="$t('settings.video_page_remove_charge_exclusive_video')">
+          <Radio v-model="settings.videoPageRemoveChargeExclusiveVideo" />
+        </SettingsItem>
+        <SettingsItem :title="$t('settings.video_page_remove_promoted_videos')">
+          <Radio v-model="settings.videoPageRemovePromotedVideos" />
+        </SettingsItem>
+        <SettingsItem :title="$t('settings.video_page_only_uploader_videos')">
+          <Radio v-model="settings.videoPageOnlyUploaderVideos" />
+        </SettingsItem>
+        <SettingsItem :title="$t('settings.video_page_remove_all_recommendations')">
+          <Radio v-model="settings.videoPageRemoveAllRecommendations" />
+        </SettingsItem>
+        <SettingsItem :title="$t('settings.video_page_filter_recommendations')">
+          <Radio v-model="settings.videoPageFilterRecommendations" />
+        </SettingsItem>
+        <SettingsItem :title="$t('settings.video_page_filter_numeric_conditions')">
+          <Radio v-model="settings.videoPageFilterNumericConditions" />
+        </SettingsItem>
       </SettingsItemGroup>
 
       <SettingsItemGroup :title="$t('settings.group_player_behaviour')">
         <SettingsItem :title="$t('settings.remember_web_fullscreen')">
           <Radio v-model="settings.videoPageRememberWebFullscreen" />
+        </SettingsItem>
+        <SettingsItem :title="$t('settings.video_page_auto_like')">
+          <Radio v-model="settings.videoPageAutoLike" />
         </SettingsItem>
       </SettingsItemGroup>
 

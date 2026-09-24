@@ -374,19 +374,65 @@ settings:
   block_top_search_page_ads: 封鎖 bilibili 搜尋頁上方的廣告
   block_top_search_page_ads_desc: 有時候，搜尋結果上方的廣告實際上是年末總結、年度報告這些。如果你不想這些內容被誤刪，請停用此選項。
   block_vip_danmuku_style: 封鎖大會員彈幕的彩色樣式（使其和正常彈幕使用相同樣式）
-  video_page_filter_recommendations: 封鎖影片頁相關推薦中命中標題封鎖詞或 UP 主黑名單的影片
+  video_page_filter_recommendations: 按關鍵詞過濾（名單與首頁共用）
   video_page_filter_numeric_conditions: 同時套用播放量與時長門檻（與首頁共用）
+  video_page_remove_charge_exclusive_video: 移除充電專屬影片
+  video_page_remove_promoted_videos: 移除推廣
+  video_page_only_uploader_videos: 僅 UP 主投稿影片
+  video_page_remove_all_recommendations: 移除所有側邊欄推薦內容
+
+  # 影片頁上那些不看內容好壞的淨化
+  group_video_page_cleanup: 頁面淨化
+  group_video_recommendation_filter: 影片下方推薦過濾
+  video_page_auto_like: 自動點讚
+  video_page_removed_popups: 移除影片浮窗
+  video_popup_vote: 投票彈幕
+  video_popup_attention: 三連關注彈幕
+  video_popup_grade: 評分彈幕
+  video_popup_grade_summary: 評分總結彈幕
+  video_popup_link: 關聯影片彈幕
+  video_popup_other: 其它
+  video_page_remove_charge_button: 移除充電按鈕
+  video_page_block_live_order: 封鎖直播預約橫幅
+  video_page_block_activity_tag: 封鎖活動標籤
+
+  # 搜尋頁淨化
+  group_search_purify: 淨化搜尋結果
+  search_purify_items: 頂部內容
+  search_purify_words: 預設關鍵詞
+  search_purify_trending: 熱搜
+  search_purify_recommend: 發現
+  search_blocked_types: 結果類型
+  search_type_hot_banner: 熱搜橫幅
+  search_type_video: 投稿影片
+  search_type_related_search: 相關搜尋
+  search_type_game: 遊戲
+  search_type_user: UP 主
+  search_type_ad: 廣告
+  search_type_comic: 漫畫
+  search_type_channel: 頻道
+  search_type_bangumi: 番劇
+  search_type_subject: 話題
+  search_type_collection: 合集
+  search_type_article: 專欄
+  search_type_twitter: 動態
+  search_type_live: 直播
+  search_type_ketang: 課堂
+  enable_search_keyword_filter: 按關鍵詞過濾
+
   url_trim_settings: 頁面 URL 優化
   clean_url_argument: 清理 URL 無用參數（也會自動清理“分享”按鈕的無用參數）
   bv_to_av: 將 BV 號轉爲 AV 號
   comment_settings: 評論區
+  block_comment_section: 封鎖評論區
   show_comment_ip_location: 顯示 IP 屬地
-  show_comment_ip_location_desc: >
-    在每條評論的時間後面顯示 IP 屬地，樓中樓也會顯示。屬地是發布評論時記錄的，不是即時位置。
+  show_comment_gender: 顯示性別
   group_user_pages: 頂欄與個人空間
   show_exact_counts: 數量精確顯示
   group_comment_filter: 評論區過濾
   enable_comment_filter: 啟用過濾
+  comment_filter_only_at: 僅「{'@'}某人」的評論
+  comment_filter_goods: UP 主帶貨評論
   comment_filter_content: 評論內容（包含匹配）
   comment_filter_content_hint: 關鍵詞，或 /正則/
   comment_filter_user: UP 主（完全匹配）

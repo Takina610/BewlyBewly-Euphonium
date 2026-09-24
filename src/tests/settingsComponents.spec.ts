@@ -15,6 +15,8 @@ import SlackingNotice from '~/components/Settings/components/SlackingNotice.vue'
 import Slacking from '~/components/Settings/Slacking/Slacking.vue'
 import { LIVE_CLEANUP_ITEMS } from '~/constants/liveCleanup'
 import { MOMENTS_TYPE_ITEMS } from '~/constants/momentsTypes'
+import { SEARCH_PURIFY_ITEMS, SEARCH_RESULT_TYPES } from '~/constants/searchPurify'
+import { VIDEO_POPUP_ITEMS } from '~/constants/videoPagePopups'
 import { settings } from '~/logic'
 
 vi.mock('webextension-polyfill', () => {
@@ -133,53 +135,6 @@ it('renders the comment group of the bilibili settings tab, wired to the setting
   settings.value.showCommentIpLocation = true
   await nextTick()
   expect(ipLocationSwitch!.checked).toBe(true)
-
-  app.unmount()
-})
-
-/**
- * The recommendation rail's two switches live in the same tab. They are bound to settings of their own
- * (the rail shares the home feed's lists rather than owning any), so both have to be present and
- * track the setting the filter reads.
- */
-it('renders the recommendation-rail switches of the bilibili settings tab', async () => {
-  host = document.createElement('div')
-  document.body.appendChild(host)
-
-  const i18n = createI18n({
-    legacy: false,
-    locale: 'en',
-    fallbackLocale: 'en',
-    globalInjection: true,
-    missingWarn: false,
-    fallbackWarn: false,
-  })
-  const app = createApp(BilibiliSettings)
-  app.use(i18n)
-  app.use(components)
-  app.mount(host)
-  await nextTick()
-
-  const html = host.innerHTML
-  expect(html).toContain('settings.video_page_filter_recommendations')
-  expect(html).toContain('settings.video_page_filter_numeric_conditions')
-
-  const railSwitch = switchFor(host, 'settings.video_page_filter_recommendations')
-  const thresholdsSwitch = switchFor(host, 'settings.video_page_filter_numeric_conditions')
-  expect(railSwitch, 'the rail switch').not.toBeNull()
-  expect(thresholdsSwitch, 'the thresholds switch').not.toBeNull()
-
-  settings.value.videoPageFilterRecommendations = false
-  settings.value.videoPageFilterNumericConditions = true
-  await nextTick()
-  expect(railSwitch!.checked).toBe(false)
-  expect(thresholdsSwitch!.checked).toBe(true)
-
-  settings.value.videoPageFilterRecommendations = true
-  settings.value.videoPageFilterNumericConditions = false
-  await nextTick()
-  expect(railSwitch!.checked).toBe(true)
-  expect(thresholdsSwitch!.checked).toBe(false)
 
   app.unmount()
 })
@@ -516,7 +471,7 @@ it('renders the comment filter and the exact-count switch of the bilibili settin
     .find(el => el.textContent?.includes('settings.show_exact_counts'))
   expect(exactItem?.closest('.b-settings-item-group')?.textContent).toContain('settings.group_user_pages')
   const commentGroup = Array.from(host!.querySelectorAll<HTMLElement>('.b-settings-item-group'))
-    .find(el => el.querySelector('.b-settings-item')?.textContent?.includes('settings.show_comment_ip_location'))
+    .find(el => el.textContent?.includes('settings.show_comment_ip_location'))
   expect(commentGroup?.textContent).not.toContain('settings.show_exact_counts')
 
   // 开关没打开时名单不占地方
@@ -613,6 +568,127 @@ it('renders the live-room tab, and its chips come off and on', async () => {
   chip.click()
   await nextTick()
   expect(settings.value.liveCleanupItems).toContain('wish')
+
+  app.unmount()
+})
+
+/**
+ * The video page group of the bilibili settings tab: four switches plus the popup chips. Ticking a chip
+ * writes its key into one shared list, which is the whole feature — each option only ever adds or
+ * removes itself from `videoPageRemovedPopups`.
+ */
+/**
+ * The video page's cleanups and the auto-like switch live in the video page tab, next to the switches
+ * they belong with: the popups under 弹幕 (they are danmaku actions), the rest in a group of their own.
+ * Ticking a popup chip writes its key into one shared list, which is the whole feature — each option
+ * only ever adds or removes itself from `videoPageRemovedPopups`.
+ */
+it('renders the video page cleanups in the video page tab, and its chips write the keys', async () => {
+  settings.value.slackingMode = false
+  const app = await mountTab(VideoPage)
+
+  settings.value.videoPageRemovedPopups = []
+  await nextTick()
+
+  const html = host!.innerHTML
+  expect(html).toContain('settings.group_video_page_cleanup')
+  expect(html).toContain('settings.group_danmaku')
+  for (const item of VIDEO_POPUP_ITEMS)
+    expect(html, `missing popup chip: ${item.labelKey}`).toContain(item.labelKey)
+
+  const autoLikeSwitch = switchFor(host!, 'settings.video_page_auto_like')
+  expect(autoLikeSwitch, 'the auto-like switch').not.toBeNull()
+  settings.value.videoPageAutoLike = true
+  await nextTick()
+  expect(autoLikeSwitch!.checked).toBe(true)
+  settings.value.videoPageAutoLike = false
+
+  // 三件事各一个开关，都要落在自己的设置上
+  for (const key of ['settings.video_page_remove_charge_button', 'settings.video_page_block_live_order', 'settings.video_page_block_activity_tag'])
+    expect(switchFor(host!, key), `missing switch: ${key}`).not.toBeNull()
+
+  // 推荐位过滤：四格按内容清，加上「按关键词过滤」与它那个阈值开关
+  const htmlWithRail = host!.innerHTML
+  expect(htmlWithRail).toContain('settings.group_video_recommendation_filter')
+  for (const key of [
+    'settings.video_page_remove_charge_exclusive_video',
+    'settings.video_page_remove_promoted_videos',
+    'settings.video_page_only_uploader_videos',
+    'settings.video_page_remove_all_recommendations',
+    'settings.video_page_filter_recommendations',
+    'settings.video_page_filter_numeric_conditions',
+  ]) {
+    expect(switchFor(host!, key), `missing rail switch: ${key}`).not.toBeNull()
+  }
+
+  // 那两枚开关绑的是自己那份设置（名单与首页共用，但开不开各管各的）
+  const railSwitch = switchFor(host!, 'settings.video_page_filter_recommendations')
+  const thresholdsSwitch = switchFor(host!, 'settings.video_page_filter_numeric_conditions')
+  settings.value.videoPageFilterRecommendations = false
+  settings.value.videoPageFilterNumericConditions = true
+  await nextTick()
+  expect(railSwitch!.checked).toBe(false)
+  expect(thresholdsSwitch!.checked).toBe(true)
+  settings.value.videoPageFilterRecommendations = true
+  settings.value.videoPageFilterNumericConditions = false
+  await nextTick()
+
+  const chip = Array.from(host!.querySelectorAll<HTMLElement>('div'))
+    .find(el => el.textContent?.trim() === 'settings.video_popup_vote')!
+  chip.click()
+  await nextTick()
+  expect(settings.value.videoPageRemovedPopups).toContain('vote')
+  chip.click()
+  await nextTick()
+  expect(settings.value.videoPageRemovedPopups).not.toContain('vote')
+
+  app.unmount()
+})
+
+/**
+ * The search page purification group: the two chip lists write the two lists of keys, and the keyword
+ * lists only take up room once their switch is on (the same shape as the comment filter).
+ */
+it('renders the search page purification group, and its chips write the keys', async () => {
+  const app = await mountTab(SearchPage, { pinia: true })
+
+  settings.value.searchPurifyItems = []
+  settings.value.searchBlockedTypes = []
+  settings.value.searchFilterKeywords = false
+  await nextTick()
+
+  const html = host!.innerHTML
+  expect(html).toContain('settings.group_search_purify')
+  for (const item of SEARCH_PURIFY_ITEMS)
+    expect(html, `missing purify chip: ${item.labelKey}`).toContain(item.labelKey)
+  for (const item of SEARCH_RESULT_TYPES)
+    expect(html, `missing type chip: ${item.labelKey}`).toContain(item.labelKey)
+
+  const itemsBefore = host!.querySelectorAll('.b-settings-item').length
+
+  const purifyChip = Array.from(host!.querySelectorAll<HTMLElement>('div'))
+    .find(el => el.textContent?.trim() === 'settings.search_purify_trending')!
+  purifyChip.click()
+  await nextTick()
+  expect(settings.value.searchPurifyItems).toContain('trending')
+  purifyChip.click()
+  await nextTick()
+  expect(settings.value.searchPurifyItems).not.toContain('trending')
+
+  const typeChip = Array.from(host!.querySelectorAll<HTMLElement>('div'))
+    .find(el => el.textContent?.trim() === 'settings.search_type_live')!
+  typeChip.click()
+  await nextTick()
+  expect(settings.value.searchBlockedTypes).toContain('live')
+
+  settings.value.searchFilterKeywords = true
+  await nextTick()
+  expect(host!.querySelectorAll('.b-settings-item').length).toBeGreaterThan(itemsBefore)
+  for (const tag of ['keywordtable', 'settingsitem', 'settingsitemgroup'])
+    expect(host!.innerHTML, `unresolved component: <${tag}>`).not.toMatch(new RegExp(`<${tag}[\\s>]`, 'i'))
+
+  settings.value.searchBlockedTypes = []
+  settings.value.searchFilterKeywords = false
 
   app.unmount()
 })

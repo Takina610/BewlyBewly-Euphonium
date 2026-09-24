@@ -60,12 +60,20 @@ interface ReplySpec {
   uname: string
   message: string
   replies?: ReplySpec[]
+  /** 带货评论：正文里挂着商品卡 */
+  cardInfo?: boolean
+  /** 蓝链：键是链接 id，值是那条链接的字段 */
+  urls?: Record<string, unknown>
 }
 
 function reply(spec: ReplySpec): Record<string, unknown> {
   return {
     member: { mid: spec.mid, uname: spec.uname },
-    content: { message: spec.message },
+    content: {
+      message: spec.message,
+      ...(spec.cardInfo ? { card_info: { image_list: ['https://i0.hdslb.com/bfs/goods.jpg'] } } : {}),
+      ...(spec.urls ? { urls: spec.urls } : {}),
+    },
     replies: spec.replies?.map(reply) ?? [],
   }
 }
@@ -182,6 +190,69 @@ it('drops comments that carry a blocked topic', () => {
   // 「话题」只看成对的 # 之间那一段，正文里出现同样的字不算
   setRules({ topic: [{ keyword: '好玩', remark: '' }] })
   expect(survivors(requestComments()).top).toEqual([1, 2, 3, 4, 5, 8])
+})
+
+it('drops comments that are only a mention of someone', () => {
+  FakeXMLHttpRequest.payload = JSON.stringify(payloadOf([
+    { mid: 1, uname: '甲', message: '@张三' },
+    { mid: 2, uname: '乙', message: '@张三 @李四 ' },
+    { mid: 3, uname: '丙', message: '说到@张三 这个人' },
+    { mid: 4, uname: '丁', message: '这条应该留下' },
+  ]))
+  setRules({ onlyAt: true })
+
+  expect(survivors(requestComments()).top).toEqual([3, 4])
+})
+
+it('drops comments that carry goods, by card or by link', () => {
+  FakeXMLHttpRequest.payload = JSON.stringify(payloadOf([
+    { mid: 1, uname: '甲', message: '这条应该留下' },
+    { mid: 2, uname: '乙', message: '看看这个', cardInfo: true },
+    { mid: 3, uname: '丙', message: '正文带链接 https://gaoneng.bilibili.com/tetris/page?id=1' },
+    {
+      mid: 4,
+      uname: '丁',
+      message: '蓝链带货',
+      urls: { '1': { extra: { goods_cm_control: 1 }, app_url_schema: 'bilibili://goods' } },
+    },
+    {
+      mid: 5,
+      uname: '戊',
+      message: '指向带货域的蓝链',
+      urls: { '2': { app_url_schema: 'https://gaoneng.bilibili.com/tetris/page?id=2' } },
+    },
+    {
+      mid: 6,
+      uname: '己',
+      message: '普通蓝链不该误伤',
+      urls: { '3': { extra: { goods_cm_control: 0, goods_item_id: 0 }, app_url_schema: 'bilibili://video/1' } },
+    },
+    {
+      mid: 7,
+      uname: '庚',
+      message: '带 extra 但没有商品字段的蓝链也不该误伤',
+      urls: { '4': { extra: { from_spmid: '333.1007' }, app_url_schema: 'bilibili://video/2' } },
+    },
+    {
+      mid: 8,
+      uname: '辛',
+      message: '只带商品 id 的蓝链算带货',
+      urls: { '5': { extra: { goods_item_id: '12345' } } },
+    },
+  ]))
+  setRules({ goods: true })
+
+  expect(survivors(requestComments()).top).toEqual([1, 6, 7])
+})
+
+it('drops every comment once nobody would be left, when both single rules are on', () => {
+  FakeXMLHttpRequest.payload = JSON.stringify(payloadOf([
+    { mid: 1, uname: '甲', message: '@张三' },
+    { mid: 2, uname: '乙', message: '看看这个', cardInfo: true },
+  ]))
+  setRules({ onlyAt: true, goods: true })
+
+  expect(survivors(requestComments()).top).toEqual([])
 })
 
 it('takes the nested replies with a dropped comment, and drops the ones that match on their own', () => {

@@ -2,7 +2,8 @@ import { beforeEach, expect, it, vi } from 'vitest'
 
 import { FilterType, useFilter } from '~/composables/useFilter'
 import { settings } from '~/logic/storage'
-import { normalizeViewCountText, parseDurationText, readRecommendationCard, shouldHideCard } from '~/logic/videoPageRecommendationFilter'
+import type { RailRemoveAllState } from '~/logic/videoPageRecommendationFilter'
+import { normalizeViewCountText, parseDurationText, railNodesForRemoveAll, readRecommendationCard, setRailRemoveAll, shouldHideCard, shouldHideRailCard } from '~/logic/videoPageRecommendationFilter'
 
 vi.mock('webextension-polyfill', () => {
   const browser = {
@@ -195,4 +196,108 @@ it('keeps a card that does not offer the value a threshold would judge', () => {
   expect(data.stat.viewStr).toBeNull()
   expect(data.duration).toBeNull()
   expect(shouldHideCard(data, null, thresholds.value, true)).toBe(false)
+})
+
+/**
+ * The rail mixes three kinds of promoted card in with the uploaded videos: an operators' pick, a game
+ * card and an activity card. None of them is a video, and none of them carries the fields the shared
+ * lists read, which is why they are decided by class rather than by the shared judgement.
+ */
+function railDecision(partial: Partial<Parameters<typeof shouldHideRailCard>[1]> = {}) {
+  return shouldHideRailCard(readRecommendationCard(buildCard()), {
+    removePromotedVideos: false,
+    onlyUploaderVideos: false,
+    isPromotedCard: false,
+    blocklists: null,
+    thresholds: null,
+    numericConditions: false,
+    ...partial,
+  })
+}
+
+it('hides promoted cards under either switch that means them', () => {
+  expect(railDecision({ isPromotedCard: true })).toBe(false)
+  expect(railDecision({ isPromotedCard: true, removePromotedVideos: true })).toBe(true)
+  // 「仅 UP 主投稿视频」把推广位也算作不该出现的东西
+  expect(railDecision({ isPromotedCard: true, onlyUploaderVideos: true })).toBe(true)
+})
+
+it('does not run the shared lists against a promoted card', () => {
+  settings.value.filterByTitle = [{ keyword: '标题', remark: '' }]
+  const blocklists = blocklistFilter()
+
+  // 同一张卡，当成投稿视频读就会命中标题；当成推广卡时不看这些条件
+  expect(railDecision({ blocklists: blocklists.value })).toBe(true)
+  expect(railDecision({ blocklists: blocklists.value, isPromotedCard: true })).toBe(false)
+  // 但只要推广位那一项开着，它照样走
+  expect(railDecision({ blocklists: blocklists.value, isPromotedCard: true, removePromotedVideos: true })).toBe(true)
+})
+
+/**
+ * 「移除所有侧边栏推荐内容」不是逐张卡的判断，而是整块消失：只藏卡片列表会留下一个孤零零的
+ * 「展开」按钮（点它也一样没东西出来），所以那个按钮要跟着一起藏；「接下来播放」不动，那是自动
+ * 连播的入口，不是推荐位。
+ */
+it('hides the list and its expander when the whole rail is turned off', () => {
+  const holder = document.createElement('div')
+  holder.className = 'recommend-list-v1'
+  holder.innerHTML = `
+    <div class="next-play"></div>
+    <div class="rec-list"><div class="video-page-card-small"></div></div>
+    <div class="rec-footer">展开</div>
+  `
+
+  const list = holder.querySelector<HTMLElement>('.rec-list')
+  const nodes = railNodesForRemoveAll(list)
+
+  expect(nodes).toEqual([list, holder.querySelector('.rec-footer')])
+  // 「接下来播放」不在名单里
+  expect(nodes).not.toContain(holder.querySelector('.next-play'))
+})
+
+it('handles a rail without the expander, and one that is not there at all', () => {
+  const holder = document.createElement('div')
+  holder.innerHTML = '<div class="rec-list"></div>'
+
+  expect(railNodesForRemoveAll(holder.querySelector<HTMLElement>('.rec-list'))).toHaveLength(1)
+  expect(railNodesForRemoveAll(null)).toEqual([])
+})
+
+/**
+ * 开关本身：藏的时候列表与「展开」一起下去，关掉的时候都要交回来（不留半藏着的状态），
+ * 反复开关也只记一份。
+ */
+it('hides and restores the list and its expander, however often it is toggled', () => {
+  const holder = document.createElement('div')
+  holder.className = 'recommend-list-v1'
+  holder.innerHTML = `
+    <div class="next-play"></div>
+    <div class="rec-list"></div>
+    <div class="rec-footer">展开</div>
+  `
+
+  const list = holder.querySelector<HTMLElement>('.rec-list')!
+  const footer = holder.querySelector<HTMLElement>('.rec-footer')!
+  const nextPlay = holder.querySelector<HTMLElement>('.next-play')!
+  const state: RailRemoveAllState = { nodes: [] }
+
+  setRailRemoveAll(list, state, true)
+  expect(list.style.display).toBe('none')
+  expect(footer.style.display).toBe('none')
+  // 「接下来播放」不受影响
+  expect(nextPlay.style.display).toBe('')
+  expect(state.nodes).toHaveLength(2)
+
+  // 藏了两次也只记一份，关一次就全回来了
+  setRailRemoveAll(list, state, true)
+  expect(state.nodes).toHaveLength(2)
+
+  setRailRemoveAll(list, state, false)
+  expect(list.style.display).toBe('')
+  expect(footer.style.display).toBe('')
+  expect(state.nodes).toEqual([])
+
+  // 列表不在时什么都不做
+  setRailRemoveAll(null, state, true)
+  expect(state.nodes).toEqual([])
 })

@@ -15,6 +15,8 @@ export function setupCommentFilter() {
   const publish = () => {
     document.documentElement.setAttribute(COMMENT_FILTER_ATTR, JSON.stringify({
       enabled: settings.value.enableCommentFilter,
+      onlyAt: settings.value.commentFilterOnlyAt,
+      goods: settings.value.commentFilterGoods,
       content: settings.value.commentFilterContent,
       user: settings.value.commentFilterUser,
       uid: settings.value.commentFilterUid,
@@ -27,6 +29,8 @@ export function setupCommentFilter() {
   watch(
     () => [
       settings.value.enableCommentFilter,
+      settings.value.commentFilterOnlyAt,
+      settings.value.commentFilterGoods,
       settings.value.commentFilterContent,
       settings.value.commentFilterUser,
       settings.value.commentFilterUid,

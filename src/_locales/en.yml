@@ -378,19 +378,65 @@ settings:
   block_top_search_page_ads: Block bilibili top search page ads
   block_top_search_page_ads_desc: Sometimes, the ads above search results are actually year-end summaries or annual reports. If you don't want these to be accidentally removed, please disable this option.
   block_vip_danmuku_style: Block VIP danmuku style
-  video_page_filter_recommendations: Hide recommendations matching your title and uploader blocklists
+  video_page_filter_recommendations: Filter by keyword (shared with the home page)
   video_page_filter_numeric_conditions: Also apply the view count and duration thresholds (shared with the home page)
+  video_page_remove_charge_exclusive_video: Remove charge-only videos
+  video_page_remove_promoted_videos: Remove promoted cards
+  video_page_only_uploader_videos: Uploaded videos only
+  video_page_remove_all_recommendations: Remove all sidebar recommendations
+
+  # Video page cleanups that do not look at the content itself
+  group_video_page_cleanup: Page cleanup
+  group_video_recommendation_filter: Recommendation rail filter
+  video_page_auto_like: Like automatically
+  video_page_removed_popups: Remove video popups
+  video_popup_vote: Vote
+  video_popup_attention: Follow
+  video_popup_grade: Rating
+  video_popup_grade_summary: Rating summary
+  video_popup_link: Related video
+  video_popup_other: Others
+  video_page_remove_charge_button: Remove the charge button
+  video_page_block_live_order: Remove the live reservation card
+  video_page_block_activity_tag: Remove the activity strip
+
+  # Search page purification
+  group_search_purify: Purify search results
+  search_purify_items: Top content
+  search_purify_words: Default keyword
+  search_purify_trending: Trending
+  search_purify_recommend: Discover
+  search_blocked_types: Result types
+  search_type_hot_banner: Trending banner
+  search_type_video: Videos
+  search_type_related_search: Related searches
+  search_type_game: Games
+  search_type_user: Uploaders
+  search_type_ad: Ads
+  search_type_comic: Comics
+  search_type_channel: Channels
+  search_type_bangumi: Anime
+  search_type_subject: Topics
+  search_type_collection: Collections
+  search_type_article: Articles
+  search_type_twitter: Moments
+  search_type_live: Live
+  search_type_ketang: Courses
+  enable_search_keyword_filter: Filter by keyword
+
   url_trim_settings: URL Trim
   clean_url_argument: Remove unnecessary URL argument (will also remove unnecessary URL argument of 'Share' button)
   bv_to_av: Convert BV number to AV number
   comment_settings: Comments
+  block_comment_section: Hide the comment section
   show_comment_ip_location: Show IP location
-  show_comment_ip_location_desc: >
-    Shows the IP location after each comment's timestamp, in nested replies too. It is what was recorded when the comment was posted, not the user's current location.
+  show_comment_gender: Show gender
   group_user_pages: Top bar and space pages
   show_exact_counts: Show exact counts
   group_comment_filter: Comment Filters
   enable_comment_filter: Filter comments
+  comment_filter_only_at: Comments that only mention someone
+  comment_filter_goods: Uploader product comments
   comment_filter_content: Comment text (contains)
   comment_filter_content_hint: Keyword, or /regex/
   comment_filter_user: Uploader (exact)

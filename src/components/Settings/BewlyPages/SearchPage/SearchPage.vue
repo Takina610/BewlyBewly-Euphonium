@@ -1,8 +1,10 @@
 <script lang="ts" setup>
 import { SEARCH_BAR_CHARACTERS } from '~/constants/imgs'
+import { SEARCH_PURIFY_ITEMS, SEARCH_RESULT_TYPES } from '~/constants/searchPurify'
 import { settings } from '~/logic'
 
 import ChangeWallpaper from '../../components/ChangeWallpaper.vue'
+import KeywordTable from '../../components/KeywordTable.vue'
 import SettingsItem from '../../components/SettingsItem.vue'
 import SettingsItemGroup from '../../components/SettingsItemGroup.vue'
 import SlackingNotice from '../../components/SlackingNotice.vue'
@@ -16,6 +18,22 @@ watch(() => settings.value.individuallySetSearchPageWallpaper, (newValue) => {
 
 function changeSearchBarFocusCharacter(url: string) {
   settings.value.searchPageSearchBarFocusCharacter = url
+}
+
+function isPurified(key: string): boolean {
+  return settings.value.searchPurifyItems.includes(key)
+}
+
+function isTypeBlocked(key: string): boolean {
+  return settings.value.searchBlockedTypes.includes(key)
+}
+
+function toggle(list: string[], key: string) {
+  const index = list.indexOf(key)
+  if (index === -1)
+    list.push(key)
+  else
+    list.splice(index, 1)
 }
 </script>
 
@@ -110,6 +128,71 @@ function changeSearchBarFocusCharacter(url: string) {
       </SettingsItemGroup>
 
       <ChangeWallpaper type="searchPage" />
+
+      <!--
+        净化搜索结果：清在接口数据那层，所以这里改完刷新一次才看得到——已经返回的结果要等下一批。
+      -->
+      <SettingsItemGroup :title="$t('settings.group_search_purify')">
+        <SettingsItem :title="$t('settings.search_purify_items')">
+          <template #bottom>
+            <div flex="~ gap-2 wrap">
+              <div
+                v-for="item in SEARCH_PURIFY_ITEMS"
+                :key="item.key"
+                flex="~ gap-2 items-center" p="x-4 y-2" rounded="$bew-radius" cursor-pointer duration-300
+                :style="{
+                  background: isPurified(item.key) ? 'var(--bew-theme-color-20)' : 'var(--bew-fill-1)',
+                  color: isPurified(item.key) ? 'var(--bew-theme-color)' : 'var(--bew-text-1)',
+                }"
+                @click="toggle(settings.searchPurifyItems, item.key)"
+              >
+                {{ $t(item.labelKey) }}
+              </div>
+            </div>
+          </template>
+        </SettingsItem>
+
+        <SettingsItem :title="$t('settings.search_blocked_types')">
+          <template #bottom>
+            <div flex="~ gap-2 wrap">
+              <div
+                v-for="item in SEARCH_RESULT_TYPES"
+                :key="item.key"
+                flex="~ gap-2 items-center" p="x-4 y-2" rounded="$bew-radius" cursor-pointer duration-300
+                :style="{
+                  background: isTypeBlocked(item.key) ? 'var(--bew-theme-color-20)' : 'var(--bew-fill-1)',
+                  color: isTypeBlocked(item.key) ? 'var(--bew-theme-color)' : 'var(--bew-text-1)',
+                }"
+                @click="toggle(settings.searchBlockedTypes, item.key)"
+              >
+                {{ $t(item.labelKey) }}
+              </div>
+            </div>
+          </template>
+        </SettingsItem>
+
+        <SettingsItem :title="$t('settings.enable_search_keyword_filter')">
+          <Radio v-model="settings.searchFilterKeywords" />
+        </SettingsItem>
+
+        <div v-if="settings.searchFilterKeywords" grid="~ lg:gap-4 lg:cols-2 cols-1" lg:border="t-1 $bew-border-color">
+          <SettingsItem class="unrestricted-width-settings-item" :title="$t('settings.comment_filter_content')" border="lg:none t-1 $bew-border-color">
+            <template #bottom>
+              <KeywordTable v-model="settings.searchFilterContent" :hint="$t('settings.comment_filter_content_hint')" />
+            </template>
+          </SettingsItem>
+          <SettingsItem class="unrestricted-width-settings-item" :title="$t('settings.comment_filter_user')" border="lg:none b-1 $bew-border-color">
+            <template #bottom>
+              <KeywordTable v-model="settings.searchFilterUser" :hint="$t('settings.comment_filter_user_hint')" />
+            </template>
+          </SettingsItem>
+          <SettingsItem class="unrestricted-width-settings-item" :title="$t('settings.comment_filter_uid')" border="lg:none b-1 $bew-border-color">
+            <template #bottom>
+              <KeywordTable v-model="settings.searchFilterUid" :hint="$t('settings.comment_filter_uid_hint')" />
+            </template>
+          </SettingsItem>
+        </div>
+      </SettingsItemGroup>
     </template>
   </div>
 </template>
@@ -117,5 +200,15 @@ function changeSearchBarFocusCharacter(url: string) {
 <style scoped lang="scss">
 .selected-wallpaper {
   --uno: "border-$bew-theme-color-60";
+}
+
+.unrestricted-width-settings-item {
+  :deep(.left-content) {
+    --uno: w-full;
+  }
+
+  :deep(.right-content) {
+    --uno: w-auto;
+  }
 }
 </style>
