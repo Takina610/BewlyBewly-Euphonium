@@ -3,7 +3,7 @@
 [English](README.md) | [官话 - 简体中文](README-cmn_CN.md) | [官話 - 繁體中文](README-cmn_TW.md) | 廣東話
 
 <p align="center" style="margin-bottom: 0px !important;">
-<img width="320" alt="BewlyBewly! Euphonium logo" src="./assets/re_logo.png" style="border-radius: 12px"><br/>
+<img width="320" alt="BewlyBewly! Euphonium logo" src="./assets/re_logo.png"><br/>
 </p>
 
 <p align="center">係咁以執吓你嘅 bilibili 頁面。</p>
