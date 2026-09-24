@@ -1488,6 +1488,73 @@ function setupVideoRelateFilter() {
 
 setupVideoRelateFilter()
 
+// ============================ 充电专属：自己问一次 ============================
+// 视频页首屏那一份推荐位是**服务端渲染**的：`archive/related` 由服务端替页面问了，页面自己一次
+// 都不问（实测：进视频页时这个请求不在请求列表里）。所以上面那条规则管不到首屏，而「充电专属」在
+// 渲染出来的卡片上一点痕迹都没有（充电的那条与普通视频长得一模一样，标题也未必写着充电）。
+//
+// 于是这里自己问一次：只在「移除充电专属」开着时才问（默认关着，不开就一分钱不花），把该摘掉的
+// bvid 写进 <html>，推荐位那边照名单摘（`src/logic/videoPageRecommendationFilter.ts`）。
+//
+// 「仅 UP 主投稿视频」不用走这条路：投稿卡指着 /video/BV…，从 DOM 上就认得出来。
+
+const VIDEO_RELATE_DROP_ATTR = 'data-bewly-video-relate-drop'
+
+function publishRelateDrops(bvid, list) {
+  const rules = readVideoRelateRules()
+  if (!rules || !rules.chargeExclusive || !Array.isArray(list))
+    return
+
+  const drops = []
+  for (const item of list) {
+    // 只做充电专属这一件：其余两件（推广、仅投稿）在 DOM 上就有答案
+    if (isChargeExclusiveItem(item) && item && typeof item.bvid === 'string' && item.bvid)
+      drops.push(item.bvid)
+  }
+
+  document.documentElement.setAttribute(VIDEO_RELATE_DROP_ATTR, JSON.stringify(drops))
+}
+
+function setupRelateDropList() {
+  if (!/^https?:\/\/(?:www\.)?bilibili\.com\/video\//.test(location.href))
+    return
+
+  // 这条请求要走**没装钩子**的 fetch：上面那条规则就从同一个响应里摘掉充电专属，走钩子的话
+  // 等于自己把要找的东西先滤掉了（第一版就是这样，名单永远是空的）。
+  // 这里取到的还是原始 fetch——钩子在脚本最后才装。
+  const rawFetch = typeof window.fetch === 'function' ? window.fetch.bind(window) : null
+  if (!rawFetch)
+    return
+
+  // 同一个视频只问一次（SPA 来回切、以及页面自己之后也可能问）
+  const asked = new Set()
+
+  function ask() {
+    const rules = readVideoRelateRules()
+    if (!rules || !rules.chargeExclusive)
+      return
+
+    const bvid = (location.pathname.match(/\/video\/(BV[0-9A-Za-z]+)/) || [])[1]
+    if (!bvid || asked.has(bvid))
+      return
+    asked.add(bvid)
+
+    const url = `${location.protocol}//api.bilibili.com/x/web-interface/archive/related?bvid=${bvid}&ps=30`
+    rawFetch(url, { credentials: 'include' })
+      .then(response => response.json())
+      .then((payload) => {
+        if (payload && payload.code === 0)
+          publishRelateDrops(bvid, payload.data)
+      })
+      .catch(() => {})
+  }
+
+  ask()
+  window.setInterval(ask, 2000)
+}
+
+setupRelateDropList()
+
 // ============================ 搜索页净化 ============================
 // 搜索结果是页面自己请求的，清在响应里谁也看不见；而且「这条结果是什么类型」「UP 主的 UID 是多少」
 // 在渲染出来的卡片上读不到，只有接口那份数据说得清。开关、类型清单与三条名单由 content script

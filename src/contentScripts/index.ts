@@ -16,6 +16,7 @@ import { setupLiveRoom } from '~/logic/liveRoom'
 import { setupMomentsFilter } from '~/logic/momentsFilter'
 import { setupPlaybackSpeed } from '~/logic/playbackSpeed'
 import { setupSearchFilter } from '~/logic/searchFilter'
+import { setupSearchPurifyDom } from '~/logic/searchPurifyDom'
 import { setupEarlySlackingMode } from '~/logic/slackingMode'
 import { setupVideoPageAutoLike } from '~/logic/videoPageAutoLike'
 import { setupVideoPageCleanup } from '~/logic/videoPageCleanup'
@@ -194,6 +195,11 @@ if (isSupportedPages() || isSupportedIframePages() || isStylesOnlyPage) {
   // requested as soon as it loads
   if (/https?:\/\/search\.bilibili\.com/.test(currentUrl))
     setupSearchFilter()
+
+  // 搜索结果页的首屏是服务端渲染的（那次请求不经过页面，注入脚本没有响应可改），所以同一份设置
+  // 还要在渲染出来的节点上再滤一遍。这一半还负责让首屏不闪——类型过滤走注入的样式表。
+  if (/https?:\/\/search\.bilibili\.com/.test(currentUrl))
+    setupSearchPurifyDom()
 
   // And the same again for the dynamic feed, which the page starts asking for as soon as it loads
   setupMomentsFilter()

@@ -1,5 +1,6 @@
 import { FilterType, useFilter } from '~/composables/useFilter'
 import { settings } from '~/logic'
+import { parseRelateDropList, VIDEO_RELATE_DROP_ATTR } from '~/logic/videoPageRelateFilter'
 import { queryDomUntilFound } from '~/utils/main'
 
 /**
@@ -173,9 +174,20 @@ const EMPTY_CARD: RecommendationCard = {
 }
 
 /**
- * 这张卡片现在该不该藏。三件事各管一摊：
+ * 一张卡片主链接里的视频号。**只看 DOM 就能判是不是投稿**：投稿卡指着 `/video/BV…`，番剧、课程、
+ * 活动那些指着别处。首屏那一份推荐位是服务端渲染的，接口那层看不见它，所以「仅 UP 主投稿视频」
+ * 在这一层也要认这一条。
+ */
+export function cardBvid(card: Element): string {
+  const href = card.querySelector('a[href*="/video/BV"]')?.getAttribute('href') ?? ''
+  return href.match(/BV[0-9A-Za-z]+/)?.[0] ?? ''
+}
+
+/**
+ * 这张卡片现在该不该藏。四件事各管一摊：
  * - 推广位（不是投稿视频的那三种卡片）；
- * - 只要 UP 主投稿，推广位同样不算；
+ * - 只要 UP 主投稿：推广位不算，主链接不指投稿的也不算；
+ * - bvid 在「该摘掉」名单里的（充电专属，名单由注入脚本问一次接口得到）；
  * - 关键词名单与阈值那两个共享条件（推广卡上读不到标题以外的信息，所以不拿它们去 judge）。
  *
  * 「整个推荐位都不要」不在这里：那一条不是一张卡的事，由 `railNodesForRemoveAll` 整块处理。
@@ -184,11 +196,21 @@ export function shouldHideRailCard(data: RecommendationCard, options: {
   removePromotedVideos: boolean
   onlyUploaderVideos: boolean
   isPromotedCard: boolean
+  /** 注入脚本问出来的充电专属名单，见 `src/logic/videoPageRelateFilter.ts`。 */
+  droppedBvids: string[]
+  /** 这张卡主链接里的视频号；空串表示它不是投稿视频。 */
+  bvid: string
   blocklists: Function | null
   thresholds: Function | null
   numericConditions: boolean
 }): boolean {
   if (options.isPromotedCard && (options.removePromotedVideos || options.onlyUploaderVideos))
+    return true
+
+  if (options.onlyUploaderVideos && !options.bvid)
+    return true
+
+  if (options.bvid && options.droppedBvids.includes(options.bvid))
     return true
 
   // 推广卡上没有 UP 名、播放量、时长这些信息，共享条件套上去只会误判
@@ -324,6 +346,8 @@ export function setupVideoPageRecommendationFilter() {
 
     setRemoveAll(false)
 
+    const droppedBvids = parseRelateDropList(document.documentElement.getAttribute(VIDEO_RELATE_DROP_ATTR))
+
     for (const card of Array.from(list.querySelectorAll<HTMLElement>(CARD_SELECTOR))) {
       const promoted = card.matches(PROMOTED_CARD_SELECTOR)
 
@@ -333,6 +357,8 @@ export function setupVideoPageRecommendationFilter() {
           removePromotedVideos: settings.value.videoPageRemovePromotedVideos,
           onlyUploaderVideos: settings.value.videoPageOnlyUploaderVideos,
           isPromotedCard: promoted,
+          droppedBvids,
+          bvid: promoted ? '' : cardBvid(card),
           blocklists: blocklists.value,
           thresholds: thresholds.value,
           numericConditions: settings.value.videoPageFilterNumericConditions,
@@ -429,6 +455,14 @@ export function setupVideoPageRecommendationFilter() {
       settings.value.videoPageOnlyUploaderVideos,
       settings.value.videoPageRemoveAllRecommendations,
     ],
+    scan,
+    { deep: true },
+  )
+
+  // 「充电专属」那份名单由注入脚本问接口得到，晚于推荐位到达（首屏那一份是服务端渲染的）：
+  // 到了要重判一次，那几张卡片才会消失。
+  watch(
+    () => parseRelateDropList(document.documentElement.getAttribute(VIDEO_RELATE_DROP_ATTR)),
     scan,
     { deep: true },
   )

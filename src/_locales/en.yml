@@ -423,6 +423,7 @@ settings:
   search_type_live: Live
   search_type_ketang: Courses
   enable_search_keyword_filter: Filter by keyword
+  search_filter_content: Search text (contains)
 
   url_trim_settings: URL Trim
   clean_url_argument: Remove unnecessary URL argument (will also remove unnecessary URL argument of 'Share' button)

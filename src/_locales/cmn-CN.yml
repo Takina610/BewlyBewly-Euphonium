@@ -421,6 +421,7 @@ settings:
   search_type_live: 直播
   search_type_ketang: 课堂
   enable_search_keyword_filter: 按关键词过滤
+  search_filter_content: 搜索内容（包含匹配）
 
   url_trim_settings: 页面 URL 优化
   clean_url_argument: 清理 URL 无用参数（也会自动清理“分享”按钮的无用参数）

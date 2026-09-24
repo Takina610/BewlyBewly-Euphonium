@@ -203,15 +203,16 @@ it('keeps a card that does not offer the value a threshold would judge', () => {
  * card and an activity card. None of them is a video, and none of them carries the fields the shared
  * lists read, which is why they are decided by class rather than by the shared judgement.
  */
-function railDecision(partial: Partial<Parameters<typeof shouldHideRailCard>[1]> = {}) {
+function railDecision(options: Partial<Parameters<typeof shouldHideRailCard>[1]> = {}) {
   return shouldHideRailCard(readRecommendationCard(buildCard()), {
-    removePromotedVideos: false,
-    onlyUploaderVideos: false,
-    isPromotedCard: false,
-    blocklists: null,
-    thresholds: null,
-    numericConditions: false,
-    ...partial,
+    removePromotedVideos: options.removePromotedVideos ?? false,
+    onlyUploaderVideos: options.onlyUploaderVideos ?? false,
+    isPromotedCard: options.isPromotedCard ?? false,
+    droppedBvids: options.droppedBvids ?? [],
+    bvid: options.bvid ?? 'BV1TESTCARD',
+    blocklists: options.blocklists ?? null,
+    thresholds: options.thresholds ?? null,
+    numericConditions: options.numericConditions ?? false,
   })
 }
 

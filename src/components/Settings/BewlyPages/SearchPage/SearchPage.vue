@@ -176,7 +176,7 @@ function toggle(list: string[], key: string) {
         </SettingsItem>
 
         <div v-if="settings.searchFilterKeywords" grid="~ lg:gap-4 lg:cols-2 cols-1" lg:border="t-1 $bew-border-color">
-          <SettingsItem class="unrestricted-width-settings-item" :title="$t('settings.comment_filter_content')" border="lg:none t-1 $bew-border-color">
+          <SettingsItem class="unrestricted-width-settings-item" :title="$t('settings.search_filter_content')" border="lg:none t-1 $bew-border-color">
             <template #bottom>
               <KeywordTable v-model="settings.searchFilterContent" :hint="$t('settings.comment_filter_content_hint')" />
             </template>

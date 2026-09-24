@@ -419,6 +419,7 @@ settings:
   search_type_live: 直播
   search_type_ketang: 課堂
   enable_search_keyword_filter: 按關鍵詞過濾
+  search_filter_content: 搵嘢內容（包含匹配）
 
   url_trim_settings: 頁面 URL 修剪
   clean_url_argument: 移除唔必要嘅 URL 參數（仲會自動清埋『分享』掣帶住嗰）
