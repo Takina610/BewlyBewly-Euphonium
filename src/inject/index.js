@@ -641,6 +641,651 @@ function setupDanmakuLevelFilter() {
 
 setupDanmakuLevelFilter()
 
+// ============================ 接口响应改写 ============================
+// 评论和动态都是页面自己请求的，过滤只能在这一层做：把 JSON 读出来、丢掉要丢的条目、再放回去。
+// fetch 与 XHR 两条路都装上——走哪条是 B 站自己的事，页面上两种都有。
+//
+// 一次请求只过滤一次：页面可能把 response 读好几遍，改两次就等于把已经过滤过的再过滤一遍。
+
+/**
+ * @param shouldFilter 这条请求归不归这套规则管
+ * @param filter 拿到解析好的 JSON，返回改过的 payload；返回 null 表示不用改
+ */
+function setupJsonResponseFilter(shouldFilter, filter) {
+  if (typeof window.fetch === 'function') {
+    const originalFetch = window.fetch.bind(window)
+    window.fetch = function (...args) {
+      const input = args[0]
+      let url = ''
+      if (typeof input === 'string')
+        url = input
+      else if (input && typeof input.url === 'string')
+        url = input.url
+
+      const result = originalFetch(...args)
+      if (!shouldFilter(url))
+        return result
+
+      return result.then(async (response) => {
+        if (!response || typeof response.json !== 'function')
+          return response
+
+        let payload
+        try {
+          payload = await response.clone().json()
+        }
+        catch {
+          return response
+        }
+
+        const filtered = filter(payload)
+        if (!filtered)
+          return response
+
+        const headers = new Headers(response.headers)
+        headers.delete('content-length')
+        return new Response(JSON.stringify(filtered), {
+          status: response.status,
+          statusText: response.statusText,
+          headers,
+        })
+      })
+    }
+  }
+
+  if (typeof XMLHttpRequest !== 'undefined') {
+    const originalOpen = XMLHttpRequest.prototype.open
+    const originalSend = XMLHttpRequest.prototype.send
+    const textDescriptor = Object.getOwnPropertyDescriptor(XMLHttpRequest.prototype, 'responseText')
+    const responseDescriptor = Object.getOwnPropertyDescriptor(XMLHttpRequest.prototype, 'response')
+
+    XMLHttpRequest.prototype.open = function (method, url, ...rest) {
+      this.__bewlyJsonUrl = typeof url === 'string' ? url : String(url ?? '')
+      return originalOpen.call(this, method, url, ...rest)
+    }
+
+    XMLHttpRequest.prototype.send = function (...args) {
+      this.__bewlyJsonFiltered = undefined
+      return originalSend.apply(this, args)
+    }
+
+    function readFiltered(xhr, value) {
+      if (xhr.readyState !== 4 || !shouldFilter(xhr.__bewlyJsonUrl || ''))
+        return value
+      if (xhr.__bewlyJsonFiltered !== undefined)
+        return xhr.__bewlyJsonFiltered
+
+      let result = value
+      try {
+        if (typeof value === 'string') {
+          const filtered = filter(JSON.parse(value))
+          if (filtered)
+            result = JSON.stringify(filtered)
+        }
+        else if (value && typeof value === 'object' && !(value instanceof ArrayBuffer)) {
+          const filtered = filter(value)
+          if (filtered)
+            result = filtered
+        }
+      }
+      catch {}
+
+      try {
+        xhr.__bewlyJsonFiltered = result
+      }
+      catch {}
+      return result
+    }
+
+    if (textDescriptor && textDescriptor.get) {
+      Object.defineProperty(XMLHttpRequest.prototype, 'responseText', {
+        configurable: true,
+        enumerable: textDescriptor.enumerable,
+        get() {
+          return readFiltered(this, textDescriptor.get.call(this))
+        },
+      })
+    }
+
+    // 弹幕那段也换了这个属性，它先装的话这里包在外层：各自只认自己的请求，互不干扰
+    if (responseDescriptor && responseDescriptor.get) {
+      Object.defineProperty(XMLHttpRequest.prototype, 'response', {
+        configurable: true,
+        enumerable: responseDescriptor.enumerable,
+        get() {
+          return readFiltered(this, responseDescriptor.get.call(this))
+        },
+      })
+    }
+  }
+}
+
+// ============================ 关键词名单 ============================
+// 评论过滤与动态过滤共用一套写法：一行是普通关键词，写成 `/…/` 就是正则。
+// 内容、话题用包含匹配（一句话里提到就算），UP 主、UID 用整段相等——与首页那两个黑名单同一套语义。
+
+function compileKeywords(rows, mode) {
+  const strings = []
+  const regexps = []
+
+  for (const row of Array.isArray(rows) ? rows : []) {
+    const keyword = String((row && row.keyword) || '').trim()
+    if (!keyword)
+      continue
+
+    if (keyword.length > 2 && keyword.startsWith('/') && keyword.endsWith('/')) {
+      try {
+        regexps.push(new RegExp(keyword.slice(1, -1), 'i'))
+      }
+      catch {}
+    }
+    else {
+      strings.push(keyword.toUpperCase())
+    }
+  }
+
+  return { mode, strings, regexps }
+}
+
+function isEmptyKeywords(matcher) {
+  return !matcher || (!matcher.strings.length && !matcher.regexps.length)
+}
+
+function matchKeywords(matcher, text) {
+  if (isEmptyKeywords(matcher))
+    return false
+
+  const value = String(text == null ? '' : text)
+  if (!value)
+    return false
+
+  const upper = value.toUpperCase()
+  if (matcher.mode === 'exact')
+    return matcher.strings.includes(upper.trim()) || matcher.regexps.some(re => re.test(value))
+
+  return matcher.strings.some(keyword => upper.includes(keyword)) || matcher.regexps.some(re => re.test(value))
+}
+
+/** 读一个挂在 <html> 上的 JSON 开关，按原字符串缓存——同一份设置不必每个请求都解析一遍。 */
+function readJsonAttribute(attr) {
+  const raw = document.documentElement.getAttribute(attr)
+  if (!raw)
+    return null
+
+  if (raw !== readJsonAttribute.cacheKey || readJsonAttribute.cacheAttr !== attr) {
+    readJsonAttribute.cacheKey = raw
+    readJsonAttribute.cacheAttr = attr
+    try {
+      readJsonAttribute.cacheValue = JSON.parse(raw)
+    }
+    catch {
+      readJsonAttribute.cacheValue = null
+    }
+  }
+
+  return readJsonAttribute.cacheValue
+}
+
+// ============================ 评论区过滤 ============================
+// 评论（含楼中楼）由页面自己请求，返回的 JSON 里带着内容、UP 主名和 UID —— UID 在 DOM 上根本
+// 拿不到，所以过滤只能在数据这层做。开关与四条名单由 content script 序列化成 JSON 写在 <html> 上
+// （`src/logic/commentFilter.ts`），与评论区 IP 属地同一套通道。
+//
+// 注意这是**不看**评论内容之外的：命中的评论连同它下面的楼中楼一起消失，楼里单独命中的也会掉。
+
+const COMMENT_FILTER_ATTR = 'data-bewly-comment-filter'
+const COMMENT_REPLY_RE = /\/x\/v2\/reply\/(?:wbi\/)?(?:main|reply)(?:[/?]|$)/
+/** 话题在评论里就是内容中成对的 `#` 之间那一段。 */
+const COMMENT_TOPIC_RE = /#([^#\n]{1,40})#/g
+
+function readCommentFilterRules() {
+  const parsed = readJsonAttribute(COMMENT_FILTER_ATTR)
+  if (!parsed || !parsed.enabled)
+    return null
+
+  const rules = {
+    content: compileKeywords(parsed.content, 'contains'),
+    user: compileKeywords(parsed.user, 'exact'),
+    uid: compileKeywords(parsed.uid, 'exact'),
+    topic: compileKeywords(parsed.topic, 'contains'),
+  }
+
+  // 开关开着但四条名单都空着，等于没开
+  return Object.values(rules).every(isEmptyKeywords) ? null : rules
+}
+
+function hasMatchedTopic(matcher, message) {
+  if (isEmptyKeywords(matcher))
+    return false
+
+  const text = String(message == null ? '' : message)
+  COMMENT_TOPIC_RE.lastIndex = 0
+  let match = COMMENT_TOPIC_RE.exec(text)
+  while (match) {
+    if (matchKeywords(matcher, match[1]))
+      return true
+    match = COMMENT_TOPIC_RE.exec(text)
+  }
+  return false
+}
+
+function shouldDropComment(reply, rules) {
+  if (!reply || typeof reply !== 'object')
+    return false
+
+  const member = reply.member || {}
+  if (matchKeywords(rules.content, reply.content && reply.content.message))
+    return true
+  if (matchKeywords(rules.user, member.uname))
+    return true
+  if (matchKeywords(rules.uid, member.mid == null ? '' : String(member.mid)))
+    return true
+  return hasMatchedTopic(rules.topic, reply.content && reply.content.message)
+}
+
+/** 一层一层来：这一层的评论掉了，它下面的楼中楼跟着掉；楼里单独命中的自己掉。 */
+function filterReplyList(container, key, rules) {
+  const list = container[key]
+  if (!Array.isArray(list))
+    return false
+
+  const kept = []
+  let changed = false
+
+  for (const reply of list) {
+    if (shouldDropComment(reply, rules)) {
+      changed = true
+      continue
+    }
+
+    if (filterReplyList(reply, 'replies', rules))
+      changed = true
+
+    kept.push(reply)
+  }
+
+  if (changed)
+    container[key] = kept
+
+  return changed
+}
+
+function filterCommentPayload(payload) {
+  const rules = readCommentFilterRules()
+  const data = payload && payload.data
+  if (!rules || !data || typeof data !== 'object')
+    return null
+
+  let changed = false
+  for (const key of ['replies', 'top_replies', 'hots']) {
+    if (filterReplyList(data, key, rules))
+      changed = true
+  }
+
+  // 还有一层：第一条评论的楼中楼也可能单独挂在 data.top 之类的字段上，这里不猜，认准那三个
+  return changed ? payload : null
+}
+
+function setupCommentFilter() {
+  setupJsonResponseFilter(
+    url => COMMENT_REPLY_RE.test(typeof url === 'string' ? url : ''),
+    filterCommentPayload,
+  )
+}
+
+setupCommentFilter()
+
+// ============================ 动态页过滤 ============================
+// 动态页（t.bilibili.com）的动态流由页面自己请求，过滤也就在响应上做：命中的条目从 items 里丢掉。
+// 开关、屏蔽类型与四条关键词名单由 content script 序列化成 JSON 写在 <html> 上
+// （`src/logic/momentsFilter.ts`）。
+//
+// 形状只有一种：接口给的是 `modules` 对象（`module_dynamic.major/additional/desc`）。同一份数据在
+// B 站的 App 与「空间页桌面版」接口里是数组，那种形状这里不认——认不出的条目原样放行，比猜错强。
+//
+// 类型屏蔽用的是网页端那两个枚举的名字（`DYNAMIC_TYPE_*` / `MAJOR_TYPE_*`），清单见
+// `src/constants/momentsTypes.ts`。
+
+const MOMENTS_FILTER_ATTR = 'data-bewly-moments-filter'
+// 动态流的各个入口：首页动态、空间动态、顶栏面板、热门与话题
+const MOMENTS_FEED_RE = /\/x\/polymer\/web-dynamic\/(?:desktop\/)?v1\/feed\/(?:all|space|nav|hot|topic)(?:[/?]|$)/
+
+function momentModules(item) {
+  return (item && item.modules) || {}
+}
+
+function momentDynamic(item) {
+  return momentModules(item).module_dynamic || {}
+}
+
+function momentDynamicType(item) {
+  return String((item && item.type) || '')
+}
+
+function momentMajorType(item) {
+  return String((momentDynamic(item).major || {}).type || '')
+}
+
+function momentAdditionalType(item) {
+  return String((momentDynamic(item).additional || {}).type || '')
+}
+
+/** 折叠：接口说这条不是正常显示，或者它是一条「展开 N 条相关动态」。 */
+function isFoldedMoment(item) {
+  return item.visible === false || !!momentModules(item).module_fold
+}
+
+/** 无权查看：动态失效那条路（`MAJOR_TYPE_NONE` 的 tips 就是「该动态已被删除」这类话）。 */
+function isUnavailableMoment(item) {
+  return momentMajorType(item) === 'MAJOR_TYPE_NONE'
+}
+
+/** 跳转广告：带货卡与「你可能感兴趣的 UP 主」卡，两种都会把人带走。 */
+function isJumpAdMoment(item) {
+  if (momentAdditionalType(item) === 'ADDITIONAL_TYPE_GOODS' || momentAdditionalType(item) === 'ADDITIONAL_TYPE_UP_RCMD')
+    return true
+
+  const major = momentDynamic(item).major || {}
+  if (major.goods)
+    return true
+
+  return richTextNodes(item).some(node => node.type === 'RICH_TEXT_NODE_TYPE_GOODS')
+}
+
+/** 直播预约：预约卡。`button.type === 2` 是直播那一档，其余的预约卡一并算进来。 */
+function isLiveReservationMoment(item) {
+  return momentAdditionalType(item) === 'ADDITIONAL_TYPE_RESERVE'
+}
+
+/** 推广：广告卡，以及没有类型标出来但挂着广告模块的卡片。 */
+function isPromotionMoment(item) {
+  return momentDynamicType(item) === 'DYNAMIC_TYPE_AD'
+    || !!momentModules(item).module_ad
+    || momentAdditionalType(item) === 'ADDITIONAL_TYPE_UP_RCMD'
+}
+
+function isVideoMoment(item) {
+  return momentDynamicType(item) === 'DYNAMIC_TYPE_AV' || momentMajorType(item) === 'MAJOR_TYPE_ARCHIVE'
+}
+
+/** 屏蔽类型里的一格。清单见 `src/constants/momentsTypes.ts`，这里一格一格对着接口字段判。 */
+function hasBlockedMomentType(item, types) {
+  if (!types.length)
+    return false
+
+  const type = momentDynamicType(item)
+  const major = momentMajorType(item)
+
+  for (const key of types) {
+    switch (key) {
+      case 'forward':
+        if (type === 'DYNAMIC_TYPE_FORWARD')
+          return true
+        break
+      case 'video':
+        if (isVideoMoment(item))
+          return true
+        break
+      case 'pgc':
+        if (type === 'DYNAMIC_TYPE_PGC' || type === 'DYNAMIC_TYPE_PGC_UNION' || major === 'MAJOR_TYPE_PGC')
+          return true
+        break
+      case 'fold':
+        if (isFoldedMoment(item))
+          return true
+        break
+      case 'word':
+        if (type === 'DYNAMIC_TYPE_WORD')
+          return true
+        break
+      case 'draw':
+        if (type === 'DYNAMIC_TYPE_DRAW' || major === 'MAJOR_TYPE_DRAW' || major === 'MAJOR_TYPE_OPUS')
+          return true
+        break
+      case 'article':
+        if (type === 'DYNAMIC_TYPE_ARTICLE' || major === 'MAJOR_TYPE_ARTICLE')
+          return true
+        break
+      case 'audio':
+        if (type === 'DYNAMIC_TYPE_MUSIC' || major === 'MAJOR_TYPE_MUSIC')
+          return true
+        break
+      case 'live':
+        if (type === 'DYNAMIC_TYPE_LIVE' || type === 'DYNAMIC_TYPE_LIVE_RCMD'
+          || major === 'MAJOR_TYPE_LIVE' || major === 'MAJOR_TYPE_LIVE_RCMD') {
+          return true
+        }
+        break
+      case 'medialist':
+        if (type === 'DYNAMIC_TYPE_MEDIALIST' || major === 'MAJOR_TYPE_MEDIALIST')
+          return true
+        break
+      case 'ad':
+        if (type === 'DYNAMIC_TYPE_AD')
+          return true
+        break
+      case 'banner':
+        if (type === 'DYNAMIC_TYPE_BANNER')
+          return true
+        break
+      case 'ugcSeason':
+        if (type === 'DYNAMIC_TYPE_UGC_SEASON' || major === 'MAJOR_TYPE_UGC_SEASON')
+          return true
+        break
+      case 'story':
+        // 网页端的动态枚举里没有「故事」。App 那边是按视频的 stype === 3 判的，这里照同一条来
+        if ((momentDynamic(item).major || {}).archive && momentDynamic(item).major.archive.type === 3)
+          return true
+        break
+      case 'topicRcmd':
+        // 网页端同样没有这个名字，等它出现
+        if (type === 'DYNAMIC_TYPE_TOPIC_RCMD')
+          return true
+        break
+      case 'courses':
+        if (type === 'DYNAMIC_TYPE_COURSES' || type === 'DYNAMIC_TYPE_COURSES_SEASON'
+          || type === 'DYNAMIC_TYPE_COURSES_BATCH' || major === 'MAJOR_TYPE_COURSES') {
+          return true
+        }
+        break
+    }
+  }
+
+  return false
+}
+
+function richTextNodes(item) {
+  const desc = momentDynamic(item).desc
+  return (desc && Array.isArray(desc.rich_text_nodes)) ? desc.rich_text_nodes : []
+}
+
+/** 正文：本条动态的文字。转发那半边的文字也算进来——看的时候是一条。 */
+function momentText(item) {
+  const parts = [momentDynamic(item).desc?.text]
+  for (const node of richTextNodes(item))
+    parts.push(node.orig_text, node.text)
+
+  const opus = (momentDynamic(item).major || {}).opus
+  if (opus) {
+    parts.push(opus.title)
+    if (opus.summary)
+      parts.push(opus.summary.text)
+  }
+
+  const original = item.orig
+  if (original)
+    parts.push(momentDynamic(original).desc?.text)
+
+  return parts.filter(part => typeof part === 'string' && part).join('\n')
+}
+
+/** 话题：`module_dynamic.topic.name` 与正文里 `RICH_TEXT_NODE_TYPE_TOPIC` 那些 `#…#`。 */
+function momentTopics(item) {
+  const topics = []
+  const topic = momentDynamic(item).topic
+  if (topic && typeof topic.name === 'string')
+    topics.push(topic.name)
+
+  for (const node of richTextNodes(item)) {
+    if (node.type !== 'RICH_TEXT_NODE_TYPE_TOPIC')
+      continue
+    const text = String(node.text || node.orig_text || '')
+    topics.push(text.replace(/^#+/, '').replace(/#+$/, ''))
+  }
+
+  return topics
+}
+
+function matchesMomentKeywords(item, keywords) {
+  if (matchKeywords(keywords.content, momentText(item)))
+    return true
+
+  const author = momentModules(item).module_author || {}
+  if (matchKeywords(keywords.user, author.name))
+    return true
+  if (matchKeywords(keywords.uid, author.mid == null ? '' : String(author.mid)))
+    return true
+
+  return momentTopics(item).some(topic => matchKeywords(keywords.topic, topic))
+}
+
+function readMomentsRules() {
+  const parsed = readJsonAttribute(MOMENTS_FILTER_ATTR)
+  if (!parsed)
+    return null
+
+  const rules = {
+    types: Array.isArray(parsed.types) ? parsed.types : [],
+    blockInvisible: !!parsed.blockInvisible,
+    blockJumpAds: !!parsed.blockJumpAds,
+    blockLiveReservation: !!parsed.blockLiveReservation,
+    blockPromotions: !!parsed.blockPromotions,
+    blockVideos: !!parsed.blockVideos,
+    keywords: parsed.enabledKeywords
+      ? {
+          content: compileKeywords(parsed.content, 'contains'),
+          user: compileKeywords(parsed.user, 'exact'),
+          uid: compileKeywords(parsed.uid, 'exact'),
+          topic: compileKeywords(parsed.topic, 'contains'),
+        }
+      : null,
+  }
+
+  if (rules.keywords && Object.values(rules.keywords).every(isEmptyKeywords))
+    rules.keywords = null
+
+  const nothingToDo = !rules.types.length && !rules.keywords
+    && !rules.blockInvisible && !rules.blockJumpAds && !rules.blockLiveReservation
+    && !rules.blockPromotions && !rules.blockVideos
+
+  return nothingToDo ? null : rules
+}
+
+function shouldDropMoment(item, rules) {
+  if (!item || typeof item !== 'object')
+    return false
+
+  if (rules.blockInvisible && isUnavailableMoment(item))
+    return true
+  if (rules.blockJumpAds && isJumpAdMoment(item))
+    return true
+  if (rules.blockLiveReservation && isLiveReservationMoment(item))
+    return true
+  if (rules.blockPromotions && isPromotionMoment(item))
+    return true
+  if (rules.blockVideos && isVideoMoment(item))
+    return true
+  if (rules.keywords && matchesMomentKeywords(item, rules.keywords))
+    return true
+
+  return hasBlockedMomentType(item, rules.types)
+}
+
+function filterMomentsPayload(payload) {
+  const rules = readMomentsRules()
+  const data = payload && payload.data
+  if (!rules || !data || !Array.isArray(data.items))
+    return null
+
+  const kept = data.items.filter(item => !shouldDropMoment(item, rules))
+  if (kept.length === data.items.length)
+    return null
+
+  data.items = kept
+  return payload
+}
+
+function setupMomentsFilter() {
+  setupJsonResponseFilter(
+    url => MOMENTS_FEED_RE.test(typeof url === 'string' ? url : ''),
+    filterMomentsPayload,
+  )
+}
+
+setupMomentsFilter()
+
+// ============================ 直播间默认原画 ============================
+// 直播间的播放地址是页面自己求的：进房间时它带 `qn=0`，让服务端自己挑一档（实测落在蓝光）。
+// 要原画就把那个 0 换成 10000 —— 只在 0 的时候换：用户自己选过清晰度时页面会带上具体的 qn，
+// 那一次是他的选择，不该被改回去。
+//
+// 开关写在 <html> 的 data-bewly-live-original-quality 上（`src/logic/liveRoom.ts`）。
+
+const LIVE_QUALITY_ATTR = 'data-bewly-live-original-quality'
+/** 原画。不可用时服务端会退到最接近的一档，所以写下去是安全的。 */
+const LIVE_ORIGINAL_QN = 10000
+const LIVE_PLAY_URL_RE = /\/(?:xlive\/web-room\/v2\/index\/getRoomPlayInfo|room\/v1\/Room\/playUrl)(?:\?|$)/
+
+function isLiveQualityEnabled() {
+  return document.documentElement.getAttribute(LIVE_QUALITY_ATTR) === 'true'
+}
+
+/** 把自动选档（`qn=0`）换成原画；其它情况原样返回。 */
+function preferOriginalQuality(url) {
+  if (typeof url !== 'string' || !isLiveQualityEnabled() || !LIVE_PLAY_URL_RE.test(url))
+    return url
+
+  try {
+    const parsed = new URL(url, location.href)
+    if (parsed.searchParams.get('qn') !== '0')
+      return url
+
+    parsed.searchParams.set('qn', String(LIVE_ORIGINAL_QN))
+    return parsed.toString()
+  }
+  catch {
+    return url
+  }
+}
+
+function setupLiveOriginalQuality() {
+  if (typeof window.fetch === 'function') {
+    const originalFetch = window.fetch.bind(window)
+    window.fetch = function (...args) {
+      const input = args[0]
+      if (typeof input === 'string') {
+        args[0] = preferOriginalQuality(input)
+      }
+      else if (input && typeof input.url === 'string') {
+        const rewritten = preferOriginalQuality(input.url)
+        if (rewritten !== input.url)
+          args[0] = new Request(rewritten, input)
+      }
+
+      return originalFetch(...args)
+    }
+  }
+
+  if (typeof XMLHttpRequest !== 'undefined') {
+    const originalOpen = XMLHttpRequest.prototype.open
+    XMLHttpRequest.prototype.open = function (method, url, ...rest) {
+      return originalOpen.call(this, method, preferOriginalQuality(typeof url === 'string' ? url : String(url ?? '')), ...rest)
+    }
+  }
+}
+
+setupLiveOriginalQuality()
+
 window.___inject = true
 
 // History.prototype.pushState = history.pushState

@@ -2,6 +2,7 @@
 import type { Ref } from 'vue'
 
 import { useBewlyApp } from '~/composables/useAppProvider'
+import { FilterType, useFilter } from '~/composables/useFilter'
 import type { GridLayoutType } from '~/logic'
 import type { List as VideoItem, TrendingResult } from '~/models/video/trending'
 import api from '~/utils/api'
@@ -20,6 +21,39 @@ const emit = defineEmits<{
   (e: 'beforeLoading'): void
   (e: 'afterLoading'): void
 }>()
+
+/**
+ * The popular list arrives whole — title, uploader, view count, duration, likes — so unlike the video
+ * page's rail there is nothing to read off a rendered card. The lists and the thresholds are the home
+ * feed's; only the switches deciding whether they apply here belong to this tab.
+ */
+const filterFunc = useFilter(
+  ['isFollowed'],
+  [
+    FilterType.duration,
+    FilterType.viewCount,
+    FilterType.title,
+    FilterType.user,
+    FilterType.user,
+    FilterType.likeViewRatio,
+  ],
+  [
+    ['duration'],
+    ['stat', 'view'],
+    ['title'],
+    ['owner', 'name'],
+    ['owner', 'mid'],
+    ['stat', 'view'],
+  ],
+  {},
+  {
+    [FilterType.duration]: 'trendingFilterByDuration',
+    [FilterType.viewCount]: 'trendingFilterByViewCount',
+    [FilterType.title]: 'trendingFilterByTitle',
+    [FilterType.user]: 'trendingFilterByUser',
+    [FilterType.likeViewRatio]: 'trendingFilterLikeViewRatio',
+  },
+)
 
 const gridClass = computed((): string => {
   if (props.gridLayout === 'adaptive')
@@ -98,7 +132,8 @@ async function getTrendingVideos() {
       const resData = [] as VideoItem[]
 
       response.data.list.forEach((item: VideoItem) => {
-        resData.push(item)
+        if (!filterFunc.value || filterFunc.value(item))
+          resData.push(item)
       })
 
       // when videoList has length property, it means it is the first time to load

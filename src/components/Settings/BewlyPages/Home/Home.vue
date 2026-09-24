@@ -388,6 +388,24 @@ function handleToggleHomeTab(tab: any) {
       </div>
     </SettingsItemGroup>
 
+    <SettingsItemGroup :title="$t('settings.group_trending_filters')">
+      <SettingsItem :title="$t('settings.trending_filter_by_duration')">
+        <Radio v-model="settings.trendingFilterByDuration" />
+      </SettingsItem>
+      <SettingsItem :title="$t('settings.trending_filter_by_view_count')">
+        <Radio v-model="settings.trendingFilterByViewCount" />
+      </SettingsItem>
+      <SettingsItem :title="$t('settings.trending_filter_like_view_ratio')">
+        <Radio v-model="settings.trendingFilterLikeViewRatio" />
+      </SettingsItem>
+      <SettingsItem :title="$t('settings.trending_filter_by_title')">
+        <Radio v-model="settings.trendingFilterByTitle" />
+      </SettingsItem>
+      <SettingsItem :title="$t('settings.trending_filter_by_user')">
+        <Radio v-model="settings.trendingFilterByUser" />
+      </SettingsItem>
+    </SettingsItemGroup>
+
     <SettingsItemGroup :title="$t('settings.group_following')">
       <SettingsItem :title="$t('settings.following_tab_show_livestreaming_videos')">
         <Radio v-model="settings.followingTabShowLivestreamingVideos" />

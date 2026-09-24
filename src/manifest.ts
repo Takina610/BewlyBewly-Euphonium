@@ -67,6 +67,20 @@ export async function getManifest() {
         match_about_blank: true,
         all_frames: true,
       },
+      // 直播间：跑同一份脚本，但**不带那份样式表**。BewlyBewly 的那套样式是给受支持的页面写的，
+      // 灌进直播间只会平白改掉它的排版；这里要的只是那几个净化开关。
+      {
+        matches: [
+          '*://live.bilibili.com/*',
+        ],
+        exclude_matches: [
+          // 粉丝勋章墙本来就靠上面那条（连带样式）服务
+          '*://live.bilibili.com/p/html/live-fansmedal-wall/*',
+        ],
+        js: ['./dist/contentScripts/index.global.js'],
+        run_at: 'document_start',
+        all_frames: false,
+      },
       {
         matches: [
           '*://www.bilibili.com/*',
@@ -79,7 +93,7 @@ export async function getManifest() {
           '*://www.hdslb.com/*',
           '*://passport.bilibili.com/*',
           '*://music.bilibili.com/*',
-          '*://live.bilibili.com/p/html/live-fansmedal-wall/*',
+          '*://live.bilibili.com/*',
         ],
         js: ['./dist/inject/index.js'],
         run_at: 'document_start',

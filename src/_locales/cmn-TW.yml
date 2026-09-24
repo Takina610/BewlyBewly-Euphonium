@@ -90,6 +90,12 @@ settings:
   group_recommendation_filters: 「爲你推薦」過濾
   group_recommendation_filters_desc: |
     限制的數值不要設太大，不然載入時間可能會增加！
+  group_trending_filters: 「熱門影片」過濾
+  trending_filter_by_duration: 時長過濾（閾值與個性推薦共用）
+  trending_filter_by_view_count: 播放量過濾（閾值與個性推薦共用）
+  trending_filter_like_view_ratio: 點讚播放比過濾（閾值與個性推薦共用）
+  trending_filter_by_title: 標題過濾（名單與個性推薦共用）
+  trending_filter_by_user: UP 主過濾（名單與個性推薦共用）
   group_following: 正在跟隨
   group_search_page_mode: 搜尋頁模式
   group_home_tabs: 首頁標籤欄
@@ -103,6 +109,14 @@ settings:
   danmaku_level_medium: 中
   danmaku_level_high: 高
   show_loaded_danmaku_count: 在播放器資訊欄顯示已裝填的彈幕數
+  group_playback_speed: 播放速度
+  default_playback_speed: 預設播放速度（留空則不變更）
+  long_press_playback_speed: 長按播放速度（留空則不變更）
+  playback_speed_list: 自訂倍速清單（空格分隔，留空則不變更）
+  playback_speed_example: '1.5'
+  playback_speed_list_example: 2 1.5 1
+  disable_long_press_speed_up: 禁止長按倍速播放
+  remember_playback_speed: 記住播放速度變化
   group_slacking: 摸魚模式
   group_slacking_desc: 讓別人從旁邊一眼掃過去，看不出你在看什麼、也看不出你在娛樂。你的主題配色不會被改動——整頁只是變暗，不是換色。
   group_slacking_trigger: 怎麼切換
@@ -369,6 +383,69 @@ settings:
   show_comment_ip_location: 顯示 IP 屬地
   show_comment_ip_location_desc: >
     在每條評論的時間後面顯示 IP 屬地，樓中樓也會顯示。屬地是發布評論時記錄的，不是即時位置。
+  group_user_pages: 頂欄與個人空間
+  show_exact_counts: 數量精確顯示
+  group_comment_filter: 評論區過濾
+  enable_comment_filter: 啟用過濾
+  comment_filter_content: 評論內容（包含匹配）
+  comment_filter_content_hint: 關鍵詞，或 /正則/
+  comment_filter_user: UP 主（完全匹配）
+  comment_filter_user_hint: UP 主名
+  comment_filter_uid: UID（完全匹配）
+  comment_filter_uid_hint: UID
+  comment_filter_topic: 話題（包含匹配）
+  comment_filter_topic_hint: 話題名
+
+  # 動態頁與直播間
+  menu_moments_page: 動態頁
+  menu_live_page: 直播間
+  group_moments_block: 遮蔽
+  moments_block_invisible: 遮蔽無權查看的動態
+  moments_block_jump_ads: 遮蔽跳轉廣告動態
+  moments_block_live_reservation: 遮蔽直播預約動態
+  moments_block_promotions: 遮蔽推廣動態
+  moments_block_videos: 遮蔽動態影片
+  moments_block_types: 依類型遮蔽
+  moments_block_types_desc: 選中即遮蔽，留空就什麼都不遮蔽。
+  moments_type_forward: 轉發
+  moments_type_video: 投稿影片
+  moments_type_pgc: 番劇、電影等
+  moments_type_fold: 折疊
+  moments_type_word: 文字
+  moments_type_draw: 圖文
+  moments_type_article: 文章
+  moments_type_audio: 音訊
+  moments_type_live: 直播
+  moments_type_medialist: 播放清單
+  moments_type_ad: 廣告
+  moments_type_banner: 橫幅（你可能感興趣的 UP 主）
+  moments_type_ugc_season: 合集
+  moments_type_story: 故事
+  moments_type_topic_rcmd: 話題推薦
+  moments_type_courses: 付費更新
+  moments_filter_keywords: 依關鍵詞遮蔽
+  enable_moments_keyword_filter: 啟用過濾
+  group_live_cleanup: 淨化直播間浮窗
+  live_cleanup_desc: 選中即隱藏。
+  group_live_player: 播放器
+  live_default_original_quality: 進入直播間時選原畫
+  live_remove_watermark: 移除浮水印
+  live_block_real_name_dialog: 遮蔽實名認證彈窗
+  live_cleanup_shopping_card: 購物卡片
+  live_cleanup_shopping_picks: 購物精選
+  live_cleanup_follow_reminder: 關注提醒
+  live_cleanup_reservation: 直播預約
+  live_cleanup_gift_support: 投餵支持
+  live_cleanup_scrolling_banner: 滾動橫幅
+  live_cleanup_battery_task: 電池任務
+  live_cleanup_buying_now: 正在去買
+  live_cleanup_gift_planet: 禮物星球
+  live_cleanup_play_together: 主播幫玩
+  live_cleanup_plus_one: 各種 +1
+  live_cleanup_wish: 心願助力
+  live_cleanup_effect_rating: 直播效果打分
+  live_cleanup_vote_danmaku: 投票彈幕
+  live_cleanup_game_card: 遊戲卡
 
   # About
   links: 連結

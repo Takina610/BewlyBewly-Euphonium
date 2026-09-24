@@ -30,6 +30,20 @@ const pages = [
     iconActivated: 'i-mingcute:video-fill',
     component: defineAsyncComponent(() => import('./VideoPage/VideoPage.vue')),
   },
+  {
+    value: BewlyPage.Moments,
+    title: t('settings.menu_moments_page'),
+    icon: 'i-tabler:windmill',
+    iconActivated: 'i-tabler:windmill-filled',
+    component: defineAsyncComponent(() => import('./Moments/Moments.vue')),
+  },
+  {
+    value: BewlyPage.Live,
+    title: t('settings.menu_live_page'),
+    icon: 'i-tabler:broadcast',
+    iconActivated: 'i-tabler:broadcast',
+    component: defineAsyncComponent(() => import('./Live/Live.vue')),
+  },
 ]
 </script>
 

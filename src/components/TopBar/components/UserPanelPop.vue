@@ -5,7 +5,7 @@ import { useI18n } from 'vue-i18n'
 import { settings } from '~/logic'
 import api from '~/utils/api'
 import { revokeAccessKey } from '~/utils/authProvider'
-import { numFormatter } from '~/utils/dataFormatter'
+import { exactNumberFormatter, numFormatter } from '~/utils/dataFormatter'
 import { LV0_ICON, LV1_ICON, LV2_ICON, LV3_ICON, LV4_ICON, LV5_ICON, LV6_ICON, LV6_LIGHTNING_ICON } from '~/utils/lvIcons'
 import { getCSRF, getUserID, isHomePage } from '~/utils/main'
 
@@ -16,6 +16,11 @@ const props = defineProps<{
 }>()
 
 const { t } = useI18n()
+
+/** 这几个数字按「数量精确显示」决定写成 `142.9万` 还是 `1,429,271`。 */
+function formatCount(value: number | string): string {
+  return settings.value.showExactCounts ? exactNumberFormatter(value) : numFormatter(value)
+}
 
 const mid = computed(() => {
   return getUserID()
@@ -229,7 +234,7 @@ function handleClickChannel() {
         type="topBar"
       >
         <div class="num">
-          {{ userStat.following ? numFormatter(userStat.following) : '0' }}
+          {{ userStat.following ? formatCount(userStat.following) : '0' }}
         </div>
         <div>{{ $t('topbar.user_dropdown.following') }}</div>
       </ALink>
@@ -240,7 +245,7 @@ function handleClickChannel() {
         type="topBar"
       >
         <div class="num">
-          {{ userStat.follower ? numFormatter(userStat.follower) : '0' }}
+          {{ userStat.follower ? formatCount(userStat.follower) : '0' }}
         </div>
         <div>{{ $t('topbar.user_dropdown.followers') }}</div>
       </ALink>
@@ -252,7 +257,7 @@ function handleClickChannel() {
       >
         <div class="num">
           {{
-            userStat.dynamic_count ? numFormatter(userStat.dynamic_count) : '0'
+            userStat.dynamic_count ? formatCount(userStat.dynamic_count) : '0'
           }}
         </div>
         <div>{{ $t('topbar.user_dropdown.posts') }}</div>

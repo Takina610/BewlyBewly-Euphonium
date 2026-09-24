@@ -1,5 +1,6 @@
 import { useStorageLocal } from '~/composables/useStorageLocal'
 import type { wallpaperItem } from '~/constants/imgs'
+import { LIVE_CLEANUP_KEYS } from '~/constants/liveCleanup'
 import type { HomeSubPage } from '~/contentScripts/views/Home/types'
 import type { AppPage } from '~/enums/appEnums'
 
@@ -82,6 +83,23 @@ export interface Settings {
   /** 在播放器信息栏里补回 B 站自己只在番剧页显示的「已装填 N 条弹幕」。 */
   videoPageShowLoadedDanmakuCount: boolean
 
+  /**
+   * 视频页的默认播放速度，写成 `1.5` 这样的十进制数。空字符串表示不动 B 站自己的速度。
+   */
+  videoPageDefaultPlaybackRate: string
+  /**
+   * 长按右方向键时的播放速度。空字符串表示不动 B 站自己的长按倍速。
+   */
+  videoPageLongPressPlaybackRate: string
+  /**
+   * 自定义倍速列表，空格分隔（`2 1.5 1`）。空字符串表示不动播放器自带的列表。
+   */
+  videoPagePlaybackRateList: string
+  /** 禁止长按方向键倍速播放。 */
+  videoPageDisableLongPressSpeedUp: boolean
+  /** 记住播放速度变化：用户把速度改到多少，下次打开视频页就用多少。 */
+  videoPageRememberPlaybackRate: boolean
+
   searchPageDarkenOnSearchFocus: boolean
   searchPageBlurredOnSearchFocus: boolean
   searchPageLogoColor: 'white' | 'themeColor'
@@ -116,6 +134,14 @@ export interface Settings {
   // only these two switches.
   videoPageFilterRecommendations: boolean
   videoPageFilterNumericConditions: boolean
+
+  // Trending tab of the home page. Its switches are its own, but the lists and the thresholds are the
+  // home feed's, so a keyword only has to be written down once.
+  trendingFilterByTitle: boolean
+  trendingFilterByUser: boolean
+  trendingFilterByViewCount: boolean
+  trendingFilterByDuration: boolean
+  trendingFilterLikeViewRatio: boolean
 
   followingTabShowLivestreamingVideos: boolean
 
@@ -162,6 +188,45 @@ export interface Settings {
    * （`reply_control.location`），网页端不渲染而已，打开后由主世界的注入脚本把它补到 DOM 上。
    */
   showCommentIpLocation: boolean
+  /**
+   * 评论区过滤：四条名单分别对评论内容、UP 主名、UID、话题匹配，命中的评论（连同它下面的楼中楼）
+   * 由主世界的注入脚本从接口响应里丢掉，见 `src/logic/commentFilter.ts`。
+   */
+  enableCommentFilter: boolean
+  commentFilterContent: { keyword: string, remark: string }[]
+  commentFilterUser: { keyword: string, remark: string }[]
+  commentFilterUid: { keyword: string, remark: string }[]
+  commentFilterTopic: { keyword: string, remark: string }[]
+
+  /**
+   * 顶栏「我的」面板与个人空间页头部那几个数（动态、关注、粉丝、获赞）显示完整数值，不再写成 `1.4万`。
+   * 评论区的数字不归它管。
+   */
+  showExactCounts: boolean
+
+  // 动态页过滤。类型屏蔽读 `momentsBlockedTypes`（键见 `src/logic/momentsFilter.ts`），关键词过滤
+  // 那四条名单与评论区的同名名单是同一套匹配规则，但各存各的。
+  momentsBlockedTypes: string[]
+  momentsBlockInvisible: boolean
+  momentsBlockJumpAds: boolean
+  momentsBlockLiveReservation: boolean
+  momentsBlockPromotions: boolean
+  momentsBlockVideos: boolean
+  /** 按关键词过滤动态。四条名单见下。 */
+  momentsFilterKeywords: boolean
+  momentsFilterContent: { keyword: string, remark: string }[]
+  momentsFilterUser: { keyword: string, remark: string }[]
+  momentsFilterUid: { keyword: string, remark: string }[]
+  momentsFilterTopic: { keyword: string, remark: string }[]
+
+  /** 净化直播间浮窗：要清掉的浮窗键，见 `src/logic/liveRoom.ts`。空名单表示什么都不清。 */
+  liveCleanupItems: string[]
+  /** 进入直播间时默认选原画。 */
+  liveDefaultOriginalQuality: boolean
+  /** 移除直播间的播放器水印。 */
+  liveRemoveWatermark: boolean
+  /** 屏蔽直播间的实名认证弹窗。 */
+  liveBlockRealNameDialog: boolean
 }
 
 export const originalSettings: Settings = {
@@ -234,6 +299,13 @@ export const originalSettings: Settings = {
   videoPageDanmakuLevelFilter: 0,
   videoPageShowLoadedDanmakuCount: true,
 
+  // 空字符串一律表示「不动播放器自己的行为」，所以这三项默认什么都不做
+  videoPageDefaultPlaybackRate: '',
+  videoPageLongPressPlaybackRate: '',
+  videoPagePlaybackRateList: '',
+  videoPageDisableLongPressSpeedUp: false,
+  videoPageRememberPlaybackRate: false,
+
   searchPageDarkenOnSearchFocus: true,
   searchPageBlurredOnSearchFocus: false,
   searchPageLogoColor: 'themeColor',
@@ -268,6 +340,14 @@ export const originalSettings: Settings = {
   videoPageFilterRecommendations: true,
   videoPageFilterNumericConditions: false,
 
+  // Off by default: the trending tab is a ranked list, not a recommendation feed, so filtering it is
+  // something the user asks for rather than something to discover
+  trendingFilterByTitle: false,
+  trendingFilterByUser: false,
+  trendingFilterByViewCount: false,
+  trendingFilterByDuration: false,
+  trendingFilterLikeViewRatio: false,
+
   followingTabShowLivestreamingVideos: true,
 
   homePageTabVisibilityList: [],
@@ -300,6 +380,31 @@ export const originalSettings: Settings = {
   legacyPlayerLoadingScreen: false,
   videoPageRememberWebFullscreen: true,
   showCommentIpLocation: true,
+  enableCommentFilter: false,
+  commentFilterContent: [],
+  commentFilterUser: [],
+  commentFilterUid: [],
+  commentFilterTopic: [],
+  showExactCounts: true,
+
+  // 空名单 / 关着的开关：动态页过滤装上了但一声不响，等用户自己挑要屏蔽什么
+  momentsBlockedTypes: [],
+  momentsBlockInvisible: false,
+  momentsBlockJumpAds: false,
+  momentsBlockLiveReservation: false,
+  momentsBlockPromotions: false,
+  momentsBlockVideos: false,
+  momentsFilterKeywords: false,
+  momentsFilterContent: [],
+  momentsFilterUser: [],
+  momentsFilterUid: [],
+  momentsFilterTopic: [],
+
+  // 直播间这几项默认开：用户点名要的那些浮窗一进直播间就该清掉
+  liveCleanupItems: LIVE_CLEANUP_KEYS,
+  liveDefaultOriginalQuality: true,
+  liveRemoveWatermark: true,
+  liveBlockRealNameDialog: true,
 }
 
 export const settings = useStorageLocal('settings', ref<Settings>(originalSettings), { mergeDefaults: true })
@@ -333,3 +438,10 @@ export const slackingTitleSeq = useStorageLocal('slackingTitleSeq', 0)
  * quality and danmaku preferences, but nothing about the screen mode.
  */
 export const webFullscreenEntered = useStorageLocal('webFullscreenEntered', false)
+
+/**
+ * The playback speed the user last set by hand. Kept apart from `settings` for the same reason as
+ * `webFullscreenEntered`: it is not a preference anybody picks, it is what the player was left at,
+ * and it is only read back when "remember the speed" is on. `0` means nothing has been remembered.
+ */
+export const lastPlaybackRate = useStorageLocal('lastPlaybackRate', 0)

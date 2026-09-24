@@ -48,6 +48,18 @@ export function numFormatter(num: number | string): string {
   return item ? (num / item.value).toFixed(digits).replace(rx, '$1') + item.symbol : '0'
 }
 
+/**
+ * 完整数值：`1429271` → `1,429,271`。给「数量精确显示」用——`numFormatter` 那种缩写省地方，
+ * 但看不出到底是多少，粉丝、获赞这种数一眼看到头反而更有用。
+ */
+export function exactNumberFormatter(num: number | string): string {
+  const value = typeof num === 'string' ? Number(num.replace(/,/g, '')) : num
+  if (!Number.isFinite(value))
+    return String(num)
+
+  return String(Math.round(value)).replace(/\B(?=(\d{3})+(?!\d))/g, ',')
+}
+
 export function calcTimeSince(date: number | string | Date) {
   const seconds = Math.floor(((Number(new Date())) - Number(date)) / 1000)
   let interval = seconds / 31536000

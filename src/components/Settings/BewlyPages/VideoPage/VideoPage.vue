@@ -1,5 +1,12 @@
 <script lang="ts" setup>
 import { settings } from '~/logic'
+import {
+  cleanupPlaybackRateInput,
+  cleanupPlaybackRateListInput,
+  hasPlaybackRateSign,
+  sanitizePlaybackRateInput,
+  sanitizePlaybackRateListInput,
+} from '~/logic/playbackSpeed'
 import { isVideoOrBangumiPage } from '~/utils/main'
 
 import SettingsItem from '../../components/SettingsItem.vue'
@@ -22,6 +29,48 @@ const danmakuLevelOptions = [
   { value: 10, label: 'settings.danmaku_level_medium' },
   { value: 11, label: 'settings.danmaku_level_high' },
 ]
+
+type PlaybackSpeedKey = 'videoPageDefaultPlaybackRate' | 'videoPageLongPressPlaybackRate' | 'videoPagePlaybackRateList'
+
+/**
+ * 速度框的输入过滤：只认数字和小数点（列表再认一个空格当分隔符），负号整条不收——抹掉负号会把
+ * `-2` 悄悄变成 `2`，那是用户没写过的数，所以这一下什么都不做，框里留着原来那个值。
+ *
+ * 过滤放在 `Input` 组件里（`sanitize`），不是在这一层：框里的文字由组件自己的 model 决定，外面改写
+ * 过的 DOM 下一帧就会被它的原文盖回去。
+ */
+function speedSanitizer(key: PlaybackSpeedKey) {
+  return (text: string) => {
+    if (hasPlaybackRateSign(text))
+      return String(settings.value[key])
+
+    return key === 'videoPagePlaybackRateList'
+      ? sanitizePlaybackRateListInput(text)
+      : sanitizePlaybackRateInput(text)
+  }
+}
+
+/**
+ * 离开输入框时过的那一道：`0`、`1..5` 这种认不出的清空，超出浏览器区间的写成夹住之后那个数。
+ * 输入当中不能这么干——`0` 是 `0.5` 的前半截。
+ */
+function playbackSpeedSettler(key: PlaybackSpeedKey) {
+  return (text: string) => key === 'videoPagePlaybackRateList'
+    ? cleanupPlaybackRateListInput(text)
+    : cleanupPlaybackRateInput(text)
+}
+
+/** 过滤完的值落到 settings 上；框里已经是收干净的那个了，这里只为把它存下来。 */
+function writePlaybackSpeed(event: Event, key: PlaybackSpeedKey) {
+  const input = event.target as HTMLInputElement
+  settings.value[key] = input.value
+}
+
+/**
+ * 框里的按键不外传。B 站页面自己的快捷键会把空格这类键吃掉（上游对字体输入框是同样处理的），
+ * 而这三个框都长在视频页上。
+ */
+function keepKeysInForm() {}
 </script>
 
 <template>
@@ -150,6 +199,52 @@ const danmakuLevelOptions = [
       <SettingsItemGroup :title="$t('settings.group_player_behaviour')">
         <SettingsItem :title="$t('settings.remember_web_fullscreen')">
           <Radio v-model="settings.videoPageRememberWebFullscreen" />
+        </SettingsItem>
+      </SettingsItemGroup>
+
+      <SettingsItemGroup :title="$t('settings.group_playback_speed')">
+        <SettingsItem :title="$t('settings.default_playback_speed')">
+          <Input
+            :model-value="settings.videoPageDefaultPlaybackRate"
+            :placeholder="$t('settings.playback_speed_example')"
+            :sanitize="speedSanitizer('videoPageDefaultPlaybackRate')"
+            :settle="playbackSpeedSettler('videoPageDefaultPlaybackRate')"
+            @keydown.stop.passive="keepKeysInForm"
+            @input="writePlaybackSpeed($event, 'videoPageDefaultPlaybackRate')"
+            @change="writePlaybackSpeed($event, 'videoPageDefaultPlaybackRate')"
+          />
+        </SettingsItem>
+
+        <SettingsItem :title="$t('settings.long_press_playback_speed')">
+          <Input
+            :model-value="settings.videoPageLongPressPlaybackRate"
+            :placeholder="$t('settings.playback_speed_example')"
+            :sanitize="speedSanitizer('videoPageLongPressPlaybackRate')"
+            :settle="playbackSpeedSettler('videoPageLongPressPlaybackRate')"
+            @keydown.stop.passive="keepKeysInForm"
+            @input="writePlaybackSpeed($event, 'videoPageLongPressPlaybackRate')"
+            @change="writePlaybackSpeed($event, 'videoPageLongPressPlaybackRate')"
+          />
+        </SettingsItem>
+
+        <SettingsItem :title="$t('settings.playback_speed_list')">
+          <Input
+            :model-value="settings.videoPagePlaybackRateList"
+            :placeholder="$t('settings.playback_speed_list_example')"
+            :sanitize="speedSanitizer('videoPagePlaybackRateList')"
+            :settle="playbackSpeedSettler('videoPagePlaybackRateList')"
+            @keydown.stop.passive="keepKeysInForm"
+            @input="writePlaybackSpeed($event, 'videoPagePlaybackRateList')"
+            @change="writePlaybackSpeed($event, 'videoPagePlaybackRateList')"
+          />
+        </SettingsItem>
+
+        <SettingsItem :title="$t('settings.disable_long_press_speed_up')">
+          <Radio v-model="settings.videoPageDisableLongPressSpeedUp" />
+        </SettingsItem>
+
+        <SettingsItem :title="$t('settings.remember_playback_speed')">
+          <Radio v-model="settings.videoPageRememberPlaybackRate" />
         </SettingsItem>
       </SettingsItemGroup>
     </template>

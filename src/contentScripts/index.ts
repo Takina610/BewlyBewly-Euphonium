@@ -6,9 +6,14 @@ import { createApp } from 'vue'
 import { useDark } from '~/composables/useDark'
 import { BEWLY_MOUNTED } from '~/constants/globalEvents'
 import { settings } from '~/logic'
+import { setupCommentFilter } from '~/logic/commentFilter'
 import { setupCommentIpLocation } from '~/logic/commentIpLocation'
 import { setupApp } from '~/logic/common-setup'
 import { setupDanmakuLevelFilter } from '~/logic/danmakuLevelFilter'
+import { setupExactCounts } from '~/logic/exactCounts'
+import { setupLiveRoom } from '~/logic/liveRoom'
+import { setupMomentsFilter } from '~/logic/momentsFilter'
+import { setupPlaybackSpeed } from '~/logic/playbackSpeed'
 import { setupEarlySlackingMode } from '~/logic/slackingMode'
 import { setupVideoPageDanmakuCount } from '~/logic/videoPageDanmakuCount'
 import { setupVideoPageRecommendationFilter } from '~/logic/videoPageRecommendationFilter'
@@ -38,6 +43,11 @@ const currentUrl = document.URL
 
 function isFansMedalWallPage(): boolean {
   return /https?:\/\/live\.bilibili\.com\/p\/html\/live-fansmedal-wall.*/.test(currentUrl)
+}
+
+/** 直播间，形如 `live.bilibili.com/22637261`（`/blanc/` 是它的另一套壳）。 */
+function isLiveRoomPage(): boolean {
+  return /^https?:\/\/live\.bilibili\.com\/(?:blanc\/)?\d+/.test(currentUrl)
 }
 
 function isSupportedPages(): boolean {
@@ -131,6 +141,11 @@ let beforeLoadedStyleEl: HTMLStyleElement | undefined
 
 const isStylesOnlyPage = isFansMedalWallPage()
 
+// 直播间是个例外：它是 B 站自己的页面，BewlyBewly 既不改它的样子、也不接管它，只有那几个开关
+// （净化浮窗、水印、默认原画）在这里落地。所以它走单独一条路，进不去下面那个大分支。
+if (isLiveRoomPage())
+  setupLiveRoom()
+
 if (isSupportedPages() || isSupportedIframePages() || isStylesOnlyPage) {
   if (settings.value.adaptToOtherPageStyles)
     useDark()
@@ -162,6 +177,13 @@ if (isSupportedPages() || isSupportedIframePages() || isStylesOnlyPage) {
   // inject script can only act on the flag once it is on `<html>`.
   setupCommentIpLocation()
 
+  // Same channel, same reason: the inject script drops matching comments out of the response, and it
+  // needs the lists before the first page of comments is asked for.
+  setupCommentFilter()
+
+  // And the same again for the dynamic feed, which the page starts asking for as soon as it loads
+  setupMomentsFilter()
+
   // Same channel, same reason: the player fetches danmaku segments itself, so the inject script does
   // the filtering and only needs the level, which this publishes on `<html>`.
   setupDanmakuLevelFilter()
@@ -177,6 +199,15 @@ if (isSupportedPages() || isSupportedIframePages() || isStylesOnlyPage) {
     setupWebFullscreenMemory()
     setupVideoPageDanmakuCount()
   }
+
+  // The speed settings belong to the player, not to the page around it: the drawer's frame renders a
+  // video page of its own, and a speed picked there is just as much the user's choice as anywhere else.
+  if (isVideoOrBangumiPage())
+    setupPlaybackSpeed()
+
+  // 个人空间页上那几个数字（粉丝、关注、获赞）是 B 站自己渲染的，完整值只在 title 里
+  if (!isInIframe() && /^https?:\/\/space\.bilibili\.com\//.test(currentUrl))
+    setupExactCounts()
 }
 
 if (settings.value.adaptToOtherPageStyles && isHomePage()) {

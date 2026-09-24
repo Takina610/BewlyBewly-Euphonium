@@ -28,12 +28,18 @@ type KeyPath = Array<string>[]
  * the `万`-style numbers behave identically in both. `enableOverride` exists because the two answer "is
  * this condition on?" differently: the home feed reads a switch per condition, while the rail is
  * governed by one switch of its own plus an opt-in for the thresholds.
+ *
+ * `enabledKeyOverride` answers the same question a third way, for callers that have a switch per
+ * condition but not a key per condition: it says which setting decides a condition, instead of the
+ * key the condition carries by default. The values compared against stay shared either way, which is
+ * what lets the trending tab filter by the home feed's thresholds without owning any of them.
  */
 export function useFilter(
   isFollowedKeyPath: string[],
   filterOpt: FilterType[],
   keyList: KeyPath,
   enableOverride: Partial<Record<FilterType, boolean>> = {},
+  enabledKeyOverride: Partial<Record<FilterType, string>> = {},
 ) {
   function filterOutVerticalVideos(item: any, keyPath: string[], _filterValue: number) {
     const value = get(item, keyPath)
@@ -191,10 +197,18 @@ export function useFilter(
     if (override !== undefined)
       return override
 
-    return enabledKey
-      ? Boolean((settings.value as { [key: string]: any })[enabledKey])
+    const key = enabledKeyOverride[type] ?? enabledKey
+    return key
+      ? Boolean((settings.value as { [key: string]: any })[key])
       : false
   }
+
+  /**
+   * Every setting that decides whether one of these conditions takes part: the keys the conditions
+   * carry plus whichever keys the caller swapped in, so that editing a switch takes effect without a
+   * reload.
+   */
+  const switchKeys = filterOpt.map(type => enabledKeyOverride[type] ?? funcMap[type].enabledKey).filter(Boolean)
 
   const filter = ref<Function | null>(null)
 
@@ -209,6 +223,7 @@ export function useFilter(
     settings.value.filterByViewCount,
     settings.value.filterByTitle,
     settings.value.filterByUser,
+    ...switchKeys.map(key => (settings.value as { [key: string]: any })[key]),
   ], () => {
     const anyEnabled = filterOpt.some((type) => {
       const { enabledKey } = funcMap[type]

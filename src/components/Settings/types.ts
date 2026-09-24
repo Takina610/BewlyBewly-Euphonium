@@ -13,6 +13,8 @@ export enum BewlyPage {
   Home = 'Home',
   Search = 'Search',
   Video = 'Video',
+  Moments = 'Moments',
+  Live = 'Live',
 }
 
 export interface MenuItem {

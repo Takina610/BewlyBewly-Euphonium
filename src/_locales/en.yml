@@ -92,6 +92,12 @@ settings:
     "For you" Recommendation Filters
   group_recommendation_filters_desc: |
     Do not set the restricted value too large, as this may increase loading time!
+  group_trending_filters: Trending Filters
+  trending_filter_by_duration: Duration filter (threshold shared with For You)
+  trending_filter_by_view_count: View count filter (threshold shared with For You)
+  trending_filter_like_view_ratio: Like-to-view ratio filter (threshold shared with For You)
+  trending_filter_by_title: Title filter (list shared with For You)
+  trending_filter_by_user: Uploader filter (list shared with For You)
   group_following: Following
   group_search_page_mode: Search Page Mode
   group_home_tabs: Home Tabs
@@ -105,6 +111,14 @@ settings:
   danmaku_level_medium: Medium
   danmaku_level_high: High
   show_loaded_danmaku_count: Show how many danmaku were loaded, in the player info bar
+  group_playback_speed: Playback Speed
+  default_playback_speed: Default speed (leave empty to change nothing)
+  long_press_playback_speed: Long-press speed (leave empty to change nothing)
+  playback_speed_list: Custom speed list (space separated, leave empty to change nothing)
+  playback_speed_example: '1.5'
+  playback_speed_list_example: 2 1.5 1
+  disable_long_press_speed_up: Disable long-press speed-up
+  remember_playback_speed: Remember speed changes
   group_slacking: Slacking Mode
   group_slacking_desc: Makes bilibili look like a plain, motionless work page at a glance, so that a passer-by cannot tell what you are watching. Your theme colours stay as they are — the page is dimmed, not repainted.
   group_slacking_trigger: How to toggle
@@ -373,6 +387,69 @@ settings:
   show_comment_ip_location: Show IP location
   show_comment_ip_location_desc: >
     Shows the IP location after each comment's timestamp, in nested replies too. It is what was recorded when the comment was posted, not the user's current location.
+  group_user_pages: Top bar and space pages
+  show_exact_counts: Show exact counts
+  group_comment_filter: Comment Filters
+  enable_comment_filter: Filter comments
+  comment_filter_content: Comment text (contains)
+  comment_filter_content_hint: Keyword, or /regex/
+  comment_filter_user: Uploader (exact)
+  comment_filter_user_hint: Uploader name
+  comment_filter_uid: UID (exact)
+  comment_filter_uid_hint: UID
+  comment_filter_topic: Topic (contains)
+  comment_filter_topic_hint: Topic name
+
+  # Moments page & live rooms
+  menu_moments_page: Moments
+  menu_live_page: Live Rooms
+  group_moments_block: Block
+  moments_block_invisible: Block dynamics that cannot be viewed
+  moments_block_jump_ads: Block dynamics that jump to an ad
+  moments_block_live_reservation: Block live reservation dynamics
+  moments_block_promotions: Block promoted dynamics
+  moments_block_videos: Block video dynamics
+  moments_block_types: Block by type
+  moments_block_types_desc: Selected types are blocked; leaving them all unselected blocks nothing.
+  moments_type_forward: Reposts
+  moments_type_video: Uploaded videos
+  moments_type_pgc: Anime, films and the like
+  moments_type_fold: Folded
+  moments_type_word: Text
+  moments_type_draw: Text with images
+  moments_type_article: Articles
+  moments_type_audio: Audio
+  moments_type_live: Live
+  moments_type_medialist: Playlists
+  moments_type_ad: Ads
+  moments_type_banner: Banners (uploaders you may like)
+  moments_type_ugc_season: Collections
+  moments_type_story: Stories
+  moments_type_topic_rcmd: Topic suggestions
+  moments_type_courses: Paid updates
+  moments_filter_keywords: Block by keyword
+  enable_moments_keyword_filter: Filter dynamics
+  group_live_cleanup: Clean up live-room overlays
+  live_cleanup_desc: Selected overlays are hidden.
+  group_live_player: Player
+  live_default_original_quality: Pick original quality on entering a live room
+  live_remove_watermark: Remove the watermark
+  live_block_real_name_dialog: Block the real-name verification dialog
+  live_cleanup_shopping_card: Shopping card
+  live_cleanup_shopping_picks: Shopping picks
+  live_cleanup_follow_reminder: Follow reminder
+  live_cleanup_reservation: Live reservation
+  live_cleanup_gift_support: Gift support
+  live_cleanup_scrolling_banner: Scrolling banner
+  live_cleanup_battery_task: Battery tasks
+  live_cleanup_buying_now: Buying now
+  live_cleanup_gift_planet: Gift planet
+  live_cleanup_play_together: Play-along
+  live_cleanup_plus_one: The various +1 popups
+  live_cleanup_wish: Wish drive
+  live_cleanup_effect_rating: Stream rating
+  live_cleanup_vote_danmaku: Vote danmaku
+  live_cleanup_game_card: Game cards
 
   # About
   links: Links

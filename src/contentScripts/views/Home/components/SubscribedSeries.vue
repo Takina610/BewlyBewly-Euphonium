@@ -3,6 +3,7 @@ import type { Ref } from 'vue'
 
 import { useBewlyApp } from '~/composables/useAppProvider'
 import type { GridLayoutType } from '~/logic'
+import { currentMomentRules, filterMomentItems } from '~/logic/momentRules'
 import type { DataItem as MomentItem, MomentResult } from '~/models/moment/moment'
 import api from '~/utils/api'
 
@@ -127,7 +128,8 @@ async function getFollowedUsersVideos() {
 
       const resData = [] as MomentItem[]
 
-      response.data.items.forEach((item: MomentItem) => {
+      // 这一页的动态是扩展自己请求的，页面世界的钩子看不见，过滤在这里做一遍
+      filterMomentItems(response.data.items as MomentItem[], currentMomentRules()).forEach((item: MomentItem) => {
         resData.push(item)
       })
 
