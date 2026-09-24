@@ -103,8 +103,13 @@ async function checkGitHubRelease() {
   <div>
     <div max-w-600px mx-auto>
       <div relative w-240px m-auto>
+        <!--
+          这块标志是「深色牌子上的一幅画」：深色底是画面的一部分（画面内部的管身、电视机的五官都靠它），
+          不是多余的留白。所以浅色主题下它就是一块黑牌，给个圆角让它看着是有意摆上去的牌子。
+        -->
         <img
           :src="`${browser.runtime.getURL('/assets/re_logo.png')}`" alt="" width="240"
+          rounded="$bew-radius"
         >
 
         <a
