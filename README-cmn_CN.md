@@ -12,7 +12,11 @@
 
 ## 安装
 
-BewlyBewly! Euphonium 是一个个人分叉版本，**没有上架任何扩展商店**。你可以自行构建，或者从[发行版页面](https://github.com/Takina610/BewlyBewly-Euphonium/releases)下载已打包好的构建。
+- Firefox 系浏览器：<https://addons.mozilla.org/zh-CN/firefox/addon/bewlybewly-euphonium/>
+- Chromium 系浏览器：
+  - Edge Add-ons：<https://microsoftedge.microsoft.com/addons/detail/bewlybewly-euphonium/pglklheknnakaimdmdbbbhpdphbdgcaa>
+
+你也可以自行构建，或者从[发行版页面](https://github.com/Takina610/BewlyBewly-Euphonium/releases)下载已打包好的构建。
 
 ### 从源代码构建
 

@@ -12,7 +12,11 @@ English | [官话 - 简体中文](README-cmn_CN.md) | [官話 - 繁體中文](RE
 
 ## Installation
 
-BewlyBewly! Euphonium is a personal fork and is **not published on any extension store**. You either build it yourself or grab a packaged build from the [releases page](https://github.com/Takina610/BewlyBewly-Euphonium/releases).
+- Firefox-based browsers: <https://addons.mozilla.org/zh-CN/firefox/addon/bewlybewly-euphonium/>
+- Chromium-based browsers:
+  - Edge Add-ons: <https://microsoftedge.microsoft.com/addons/detail/bewlybewly-euphonium/pglklheknnakaimdmdbbbhpdphbdgcaa>
+
+You can also build it yourself or grab a packaged build from the [releases page](https://github.com/Takina610/BewlyBewly-Euphonium/releases).
 
 ### Build from source
 
