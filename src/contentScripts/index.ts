@@ -27,7 +27,6 @@ import { setupVideoPageCleanup } from '~/logic/videoPageCleanup'
 import { setupVideoPageDanmakuCount } from '~/logic/videoPageDanmakuCount'
 import { setupVideoPageRecommendationFilter } from '~/logic/videoPageRecommendationFilter'
 import { setupVideoPageRelateFilter } from '~/logic/videoPageRelateFilter'
-import { setupVolumeBoost } from '~/logic/volumeBoost'
 import { setupWebFullscreenMemory } from '~/logic/webFullscreenMemory'
 import RESET_BEWLY_CSS from '~/styles/reset.css?raw'
 import { runWhenIdle } from '~/utils/lazyLoad'
@@ -242,11 +241,8 @@ if (isSupportedPages() || isSupportedIframePages() || isStylesOnlyPage) {
 
   // The speed settings belong to the player, not to the page around it: the drawer's frame renders a
   // video page of its own, and a speed picked there is just as much the user's choice as anywhere else.
-  // The same goes for the volume slider, so the boost rides along.
-  if (isVideoOrBangumiPage()) {
+  if (isVideoOrBangumiPage())
     setupPlaybackSpeed()
-    setupVolumeBoost()
-  }
 
   // 氛围光铺在整页背后，抽屉的 iframe 里没有「整页」可言，也不该替外面的页面做主
   if (!isInIframe() && isVideoOrBangumiPage())

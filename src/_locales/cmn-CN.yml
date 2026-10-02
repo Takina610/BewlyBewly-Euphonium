@@ -433,7 +433,6 @@ settings:
   bv_to_av: 将 BV 号转为 AV 号
 
   group_player: 播放器
-  video_page_volume_boost: 音量增强
   comment_settings: 评论区
   block_comment_section: 屏蔽评论区
   show_comment_ip_location: 显示 IP 属地

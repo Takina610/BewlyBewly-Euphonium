@@ -2209,31 +2209,6 @@ setupLiveOriginalQuality()
 // 所有规则登记完了，接口钩子在这里统一装一次（见上面那段注释：一套钩子，多少条规则都只一层）。
 installJsonResponseHooks()
 
-// 音量增强开着时（<html> 带 data-bewly-volume-boost，由主世界那侧的内容脚本立起），把播放器写进
-// localStorage 的音量从真实音量（可到 200%）除回滑块比例；这样下次打开页面它恢复写出的 ≤1 值，
-// 内容脚本的属性包装翻倍之后刚好回到同一个音量。注释里的原始值不动，只改序列化前的那一份。
-const BEWLY_PROFILE_KEY = 'bpx_player_profile'
-const nativeSetItem = Storage.prototype.setItem
-Storage.prototype.setItem = function (key, value) {
-  if (key === BEWLY_PROFILE_KEY && document.documentElement.hasAttribute('data-bewly-volume-boost')) {
-    try {
-      const profile = JSON.parse(value)
-      if (profile?.media) {
-        for (const name of ['volume', 'nonzeroVol']) {
-          if (typeof profile.media[name] === 'number' && Number.isFinite(profile.media[name]))
-            profile.media[name] = profile.media[name] / 2
-        }
-        profile.media.bewlyVolumeScale = 'slider'
-        value = JSON.stringify(profile)
-      }
-    }
-    catch {
-      // 不是合法 JSON 就原样落盘，让播放器自己处理
-    }
-  }
-  return nativeSetItem.call(this, key, value)
-}
-
 window.___inject = true
 
 // History.prototype.pushState = history.pushState

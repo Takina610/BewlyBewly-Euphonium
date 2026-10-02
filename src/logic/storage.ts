@@ -111,11 +111,6 @@ export interface Settings {
   videoPageSpeedUpKeys: string[]
   videoPageSlowDownKeys: string[]
   videoPageResetSpeedKeys: string[]
-  /**
-   * 音量增强：播放器的音量滑块变成 0–200% 的量程（滑块一半处就是 100%），超过 100% 的部分
-   * 由 Web Audio 的增益节点补上。
-   */
-  videoPageVolumeBoost: boolean
 
   /** 进视频页时自动点赞一次（已经赞过的、没登录的都不动）。 */
   videoPageAutoLike: boolean
@@ -367,7 +362,6 @@ export const originalSettings: Settings = {
   videoPageSpeedUpKeys: ['c'],
   videoPageSlowDownKeys: ['x'],
   videoPageResetSpeedKeys: ['z'],
-  videoPageVolumeBoost: false,
 
   // 视频页净化：默认全开，进视频页就是干净的样子，不想要的再自己关
   videoPageAutoLike: false,

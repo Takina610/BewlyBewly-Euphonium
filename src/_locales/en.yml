@@ -435,7 +435,6 @@ settings:
   bv_to_av: Convert BV number to AV number
 
   group_player: Player
-  video_page_volume_boost: Volume boost
   comment_settings: Comments
   block_comment_section: Hide the comment section
   show_comment_ip_location: Show IP location

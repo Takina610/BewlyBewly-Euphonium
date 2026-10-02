@@ -537,35 +537,6 @@ it('renders the comment filter and the exact-count switch of the bilibili settin
 })
 
 /**
- * The bilibili tab gained a player group with the volume boost. The switch has to bind the very
- * setting the content script reads, and to live in its own group rather than among the
- * content-block switches above it.
- */
-it('binds the volume boost switch on the bilibili settings tab', async () => {
-  const app = await mountTab(BilibiliSettings)
-
-  const html = host!.innerHTML
-  expect(html).toContain('settings.group_player')
-  expect(html).toContain('settings.video_page_volume_boost')
-
-  const boostSwitch = switchFor(host!, 'settings.video_page_volume_boost')
-  expect(boostSwitch, 'the volume boost switch').not.toBeNull()
-
-  const boostGroup = Array.from(host!.querySelectorAll<HTMLElement>('.b-settings-item'))
-    .find(el => el.textContent?.includes('settings.video_page_volume_boost'))
-    ?.closest('.b-settings-item-group')?.textContent
-  expect(boostGroup).toContain('settings.group_player')
-  expect(boostGroup).not.toContain('settings.block_ads')
-
-  settings.value.videoPageVolumeBoost = true
-  await nextTick()
-  expect(boostSwitch!.checked).toBe(true)
-
-  settings.value.videoPageVolumeBoost = false
-  app.unmount()
-})
-
-/**
  * The appearance tab gained the ambient light. It lives there because it is a look, and the switch
  * title is where the fact that it acts on the bilibili video page belongs.
  */

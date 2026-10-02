@@ -431,7 +431,6 @@ settings:
   bv_to_av: 將 BV 號轉換爲 AV 號
 
   group_player: 播放器
-  video_page_volume_boost: 音量增強
   comment_settings: 留言區
   block_comment_section: 封鎖留言區
   show_comment_ip_location: 顯示 IP 屬地
