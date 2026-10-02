@@ -4,7 +4,7 @@
   "type": "module",
   "version": "1.8.34",
   "private": true,
-  "packageManager": "bun@1.4",
+  "packageManager": "bun@1.4.2",
   "description": "Just make a few small changes to your bilibili homepage — a personal fork with Euphonium-flavoured branding.",
   "homepage": "https://github.com/Takina610/BewlyBewly-Euphonium",
   "scripts": {
