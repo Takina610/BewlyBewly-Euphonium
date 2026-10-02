@@ -1,3 +1,228 @@
+// bilibili-ambilight 的页面世界一侧（HDR 探测、主题切换、全屏尺寸同步、沉浸模式——这些都只能在
+// 主世界做）。效果移植自 https://github.com/iceorange-dev/bilibili-ambilight（MIT），库本体在
+// src/ambientlight/，由视频页那侧的内容脚本通过 `bewly-ytal-message` 事件驱动；监听常驻但被动，
+// 氛围光没开时不会做任何事。内联而不是 import：这个文件还会被当作纯脚本文本加载（测试的对拍）。
+;(() => {
+  // 与原版 bilibili-ambilight 扩展并存时互不串台：消息通道标识用我们自己的
+  const YTAL_EXTENSION_ID = 'bewlybewly-ambientlight'
+
+  // messaging/content.js 的最小内联版：收内容脚本的消息、回消息
+  const ytalListeners = []
+  document.addEventListener('bewly-ytal-message', (event) => {
+    if (!event.detail || typeof event.detail !== 'string')
+      return
+    let detail
+    try {
+      detail = JSON.parse(event.detail)
+    }
+    catch {
+      return
+    }
+    if (detail?.contentScript !== YTAL_EXTENSION_ID || !detail?.type)
+      return
+    for (const listener of ytalListeners) {
+      if (listener.type === detail.type)
+        listener.handler(detail.message)
+    }
+  }, true)
+  const contentScriptPostMessage = (type, message) => {
+    return document.dispatchEvent(new CustomEvent('bewly-ytal-message', {
+      detail: JSON.stringify({ type, message, injectedScript: YTAL_EXTENSION_ID }),
+    }))
+  }
+  const contentScriptAddMessageListener = (type, handler) => {
+    ytalListeners.push({ type, handler })
+  }
+
+  let reporting = false // Prevent infinite loops
+  const reportError = (ex) => {
+    if (reporting)
+      return
+    try {
+      reporting = true
+      contentScriptPostMessage('error', { name: ex.name, message: ex.message, stack: ex.stack })
+    }
+    catch (reportEx) {
+      console.warn('Failed to report error:', ex, 'innerError:', reportEx)
+    }
+    finally {
+      reporting = false
+    }
+  }
+
+  const getElem = (() => {
+    const elems = {}
+    return (name) => {
+      if (!elems[name]?.isConnected) {
+        if (elems[name] && !elems[name].isConnected)
+          elems[name].dataset.ytalElem = name
+        elems[name] = document.querySelector(`[data-ytal-elem="${name}"]`)
+        if (elems[name])
+          delete elems[name].dataset.ytalElem
+      }
+      return elems[name]
+    }
+  })()
+
+  // Bilibili swaps the theme variables stylesheet between light.css and dark.css:
+  // <link id="__css-map__" href="//s1.hdslb.com/bfs/seed/jinkela/short/bili-theme/light.css">
+  const themeStylesheetRegex = /\/(light|dark)\.css(\?|#|$)/
+  function updateTheme(toDark) {
+    document.documentElement.classList.toggle('night-mode', toDark)
+    // Bewly 补充：现行 B 站页面还认官方暗色类 bili_dark（评论区等 lit 组件按它切文字颜色），
+    // 只切 night-mode + 样式表的话背景暗了文字仍是浅色主题的深色，深底深字没法读
+    document.documentElement.classList.toggle('bili_dark', toDark)
+
+    const themeStylesheetElem = document.getElementById('__css-map__')
+    const href = themeStylesheetElem?.getAttribute('href')
+    if (!href || !themeStylesheetRegex.test(href))
+      return
+
+    const newHref = href.replace(themeStylesheetRegex, `/${toDark ? 'dark' : 'light'}.css$2`)
+    if (newHref !== href)
+      themeStylesheetElem.setAttribute('href', newHref)
+  }
+
+  contentScriptAddMessageListener('update-theme', (toDark) => {
+    try {
+      updateTheme(toDark)
+      contentScriptPostMessage('update-theme')
+    }
+    catch (ex) {
+      reportError(ex)
+    }
+  })
+
+  const updateImmersiveMode = function updateImmersiveMode(enable) {
+    document.documentElement.toggleAttribute('data-bewly-amb-immersive', enable)
+  }
+
+  contentScriptAddMessageListener('update-immersive-mode', (enable) => {
+    try {
+      updateImmersiveMode(enable)
+      contentScriptPostMessage('update-immersive-mode')
+    }
+    catch (ex) {
+      reportError(ex)
+    }
+  })
+
+  // Only used by browsers that do not support VideoFrame.colorSpace
+  contentScriptAddMessageListener('is-hdr-video', () => {
+    contentScriptPostMessage('is-hdr-video', false)
+  })
+
+  contentScriptAddMessageListener('video-player-set-size', () => {
+    contentScriptPostMessage('sizes-changed')
+    contentScriptPostMessage('video-player-set-size')
+  })
+
+  contentScriptAddMessageListener('show', ({ toDark, hideScrollbar, immersiveMode }) => {
+    try {
+      const html = document.documentElement
+      if (hideScrollbar)
+        html.toggleAttribute('data-bewly-amb-hide-scrollbar', true)
+      if (immersiveMode)
+        updateImmersiveMode(true)
+
+      updateTheme(toDark)
+
+      html.toggleAttribute('data-bewly-amb-enabled', true)
+
+      contentScriptPostMessage('sizes-changed')
+      contentScriptPostMessage('show')
+    }
+    catch (ex) {
+      reportError(ex)
+    }
+  })
+
+  contentScriptAddMessageListener('hide', ({ toDark }) => {
+    try {
+      const html = document.documentElement
+      html.toggleAttribute('data-bewly-amb-enabled', false)
+      html.toggleAttribute('data-bewly-amb-hide-scrollbar', false)
+
+      updateImmersiveMode(false)
+
+      updateTheme(toDark)
+
+      contentScriptPostMessage('sizes-changed')
+      contentScriptPostMessage('hide')
+    }
+    catch (ex) {
+      reportError(ex)
+    }
+  })
+
+  let videoObserver
+  let videoObserverElem
+  contentScriptAddMessageListener('apply-chromium-bug-1142112-workaround', () => {
+    try {
+      const videoElem = getElem('video')
+      if (videoObserverElem === videoElem)
+        return
+
+      if (videoObserver) {
+        videoObserver.disconnect()
+        videoObserver = undefined
+      }
+      videoObserverElem = videoElem
+      if (!videoElem || videoElem.ambientlightGetVideoPlaybackQuality)
+        return
+
+      let videoIsHidden = false // IntersectionObserver is always executed at least once when the observation starts
+      let videoVisibilityChangeTime
+      videoObserver = new IntersectionObserver((entries) => {
+        for (const entry of entries) {
+          if (videoObserverElem !== entry.target)
+            continue
+          videoIsHidden = entry.intersectionRatio === 0
+          videoVisibilityChangeTime = performance.now()
+        }
+      }, {
+        rootMargin: '-70px 0px 0px 0px', // header height (64px) + additional pixels to be safe
+        threshold: 0.0001, // Because sometimes a pixel in not visible on screen but the intersectionRatio is already 0
+      })
+      videoObserver.observe(videoElem)
+
+      Object.defineProperty(videoElem, 'ambientlightGetVideoPlaybackQuality', {
+        value: videoElem.getVideoPlaybackQuality,
+      })
+
+      let previousDroppedVideoFrames = 0
+      let droppedVideoFramesCorrection = 0
+      let previousTime = performance.now()
+
+      videoElem.getVideoPlaybackQuality = function () {
+        // Use scoped properties instead of this from here on
+        const original = videoElem.ambientlightGetVideoPlaybackQuality()
+        let droppedVideoFrames = original.droppedVideoFrames
+        if (droppedVideoFrames < previousDroppedVideoFrames) {
+          previousDroppedVideoFrames = 0
+          droppedVideoFramesCorrection = 0
+        }
+        // Ignore dropped frames for 2 seconds due to requestVideoFrameCallback dropping frames when the video is offscreen
+        if (videoIsHidden || videoVisibilityChangeTime > previousTime - 2000)
+          droppedVideoFramesCorrection += droppedVideoFrames - previousDroppedVideoFrames
+        previousDroppedVideoFrames = droppedVideoFrames
+        droppedVideoFrames = Math.max(0, droppedVideoFrames - droppedVideoFramesCorrection)
+        previousTime = performance.now()
+        return {
+          corruptedVideoFrames: original.corruptedVideoFrames,
+          creationTime: original.creationTime,
+          droppedVideoFrames,
+          totalVideoFrames: original.totalVideoFrames,
+        }
+      }
+    }
+    catch (ex) {
+      console.warn('Failed to apply getVideoPlaybackQuality workaround. Continuing ambientlight initialization...')
+      reportError(ex)
+    }
+  })
+})()
+
 const isArray = val => Array.isArray(val)
 function injectFunction(
   origin,
@@ -1983,6 +2208,31 @@ setupLiveOriginalQuality()
 
 // 所有规则登记完了，接口钩子在这里统一装一次（见上面那段注释：一套钩子，多少条规则都只一层）。
 installJsonResponseHooks()
+
+// 音量增强开着时（<html> 带 data-bewly-volume-boost，由主世界那侧的内容脚本立起），把播放器写进
+// localStorage 的音量从真实音量（可到 200%）除回滑块比例；这样下次打开页面它恢复写出的 ≤1 值，
+// 内容脚本的属性包装翻倍之后刚好回到同一个音量。注释里的原始值不动，只改序列化前的那一份。
+const BEWLY_PROFILE_KEY = 'bpx_player_profile'
+const nativeSetItem = Storage.prototype.setItem
+Storage.prototype.setItem = function (key, value) {
+  if (key === BEWLY_PROFILE_KEY && document.documentElement.hasAttribute('data-bewly-volume-boost')) {
+    try {
+      const profile = JSON.parse(value)
+      if (profile?.media) {
+        for (const name of ['volume', 'nonzeroVol']) {
+          if (typeof profile.media[name] === 'number' && Number.isFinite(profile.media[name]))
+            profile.media[name] = profile.media[name] / 2
+        }
+        profile.media.bewlyVolumeScale = 'slider'
+        value = JSON.stringify(profile)
+      }
+    }
+    catch {
+      // 不是合法 JSON 就原样落盘，让播放器自己处理
+    }
+  }
+  return nativeSetItem.call(this, key, value)
+}
 
 window.___inject = true
 

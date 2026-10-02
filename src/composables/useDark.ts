@@ -2,7 +2,7 @@ import { usePreferredDark } from '@vueuse/core'
 
 import { settings } from '~/logic'
 import { runWhenIdle } from '~/utils/lazyLoad'
-import { setCookie } from '~/utils/main'
+import { isVideoOrBangumiPage, setCookie } from '~/utils/main'
 import { executeTimes } from '~/utils/timer'
 
 export function useDark() {
@@ -22,6 +22,14 @@ export function useDark() {
       return currentSystemColorScheme.value
   })
   const isDark = computed(() => currentAppColorScheme.value === 'dark')
+  /**
+   * 氛围光开着时，视频页的深浅色归它管（它强制暗色来衬光晕）。Bewly 若再写主题 cookie、发
+   * themeChange 事件、动 `bili_dark`，评论区字体和导航栏就会被拉到另一边——页面深色配浅色的字，
+   * 谁都看不清。只让出页面这部分：Bewly 自己 UI 的 dark 类照常管理。
+   */
+  const ambilightOwnsTheme = computed(() =>
+    settings.value.videoPageAmbilight && isVideoOrBangumiPage(),
+  )
   let themeChangeTimer: NodeJS.Timeout | null = null
 
   // Watch for changes in the 'settings.value.theme' variable and add the 'dark' class to the 'mainApp' element
@@ -29,7 +37,8 @@ export function useDark() {
   watch(
     // `slackingMode` belongs here because it overrides what the theme resolves to: without it, leaving
     // the mode would keep the forced classes on until something else happened to change the theme.
-    () => [settings.value.theme, isPreferredDark.value, settings.value.slackingMode],
+    // The ambilight flag belongs here too: when it turns off, the page theme comes back to Bewly.
+    () => [settings.value.theme, isPreferredDark.value, settings.value.slackingMode, ambilightOwnsTheme.value],
     () => {
       setAppAppearance()
     },
@@ -40,6 +49,9 @@ export function useDark() {
   watchEffect(() => {
     // Because some shadow dom may not be loaded when the page has already loaded, we need to wait until the page is idle
     runWhenIdle(() => {
+      if (ambilightOwnsTheme.value)
+        return
+
       if (isDark.value) {
         setCookie('theme_style', 'dark', 365 * 10)
         // TODO: find a better way implement this
@@ -71,10 +83,11 @@ export function useDark() {
         document.body?.classList.add('dark')
       })
       // bili_dark is bilibili's official dark mode class
-      document.documentElement.classList.add('bili_dark')
-
-      setCookie('theme_style', 'dark', 365 * 10)
-      window.dispatchEvent(new CustomEvent('global.themeChange', { detail: 'dark' }))
+      if (!ambilightOwnsTheme.value) {
+        document.documentElement.classList.add('bili_dark')
+        setCookie('theme_style', 'dark', 365 * 10)
+        window.dispatchEvent(new CustomEvent('global.themeChange', { detail: 'dark' }))
+      }
     }
     else {
       document.querySelector('#bewly')?.classList?.remove('dark')
@@ -82,16 +95,17 @@ export function useDark() {
       nextTick(() => {
         document.body?.classList.remove('dark')
       })
-      document.documentElement.classList.remove('bili_dark')
-
-      setCookie('theme_style', 'light', 365 * 10)
-      window.dispatchEvent(new CustomEvent('global.themeChange', { detail: 'light' }))
+      if (!ambilightOwnsTheme.value) {
+        document.documentElement.classList.remove('bili_dark')
+        setCookie('theme_style', 'light', 365 * 10)
+        window.dispatchEvent(new CustomEvent('global.themeChange', { detail: 'light' }))
+      }
     }
 
     // Only used as a temporary solution, which will eventually be removed
     // It seems like Bilibili already supports dark mode when the `bili_dark` class is added to the `html` element
     // but it's not yet fully refined.
-    if (currentAppColorScheme.value === 'dark') {
+    if (!ambilightOwnsTheme.value && currentAppColorScheme.value === 'dark') {
       if (document.documentElement.classList.contains('bili_dark')) {
         document.documentElement.classList.remove('bili_dark')
       }

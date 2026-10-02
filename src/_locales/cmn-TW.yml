@@ -114,9 +114,13 @@ settings:
   long_press_playback_speed: 長按播放速度（留空則不變更）
   playback_speed_list: 自訂倍速清單（空格分隔，留空則不變更）
   playback_speed_example: '1.5'
-  playback_speed_list_example: 2 1.5 1
+  playback_speed_list_example: 0.5 1 1.5 2
   disable_long_press_speed_up: 禁止長按倍速播放
   remember_playback_speed: 記住播放速度變化
+  speed_up_keys: 加速快捷鍵
+  slow_down_keys: 減速快捷鍵
+  reset_speed_keys: 恢復 1 倍速快捷鍵
+  speed_keys_example: c x
   group_slacking: 摸魚模式
   group_slacking_desc: 讓別人從旁邊一眼掃過去，看不出你在看什麼、也看不出你在娛樂。你的主題配色不會被改動——整頁只是變暗，不是換色。
   group_slacking_trigger: 怎麼切換
@@ -235,6 +239,7 @@ settings:
   customize_css_desc: 如果你不熟悉 CSS，請不要修改 CSS。否則可能會導致意外的顯示問題。如果你在修改 CSS 後遇到任何問題，請重新安裝 BewlyBewly。
 
   # Video page
+  video_page_ambilight: 氛圍光（影片頁背景光暈）
   show_video_page_background: 在影片播放頁顯示背景圖片
   show_video_page_background_desc: 使影片頁底層的部分元素背景透明，以展示你設定的全局背景圖片
   video_page_danmaku_style: 彈幕列表毛玻璃外觀
@@ -424,6 +429,9 @@ settings:
   url_trim_settings: 頁面 URL 優化
   clean_url_argument: 清理 URL 無用參數（也會自動清理“分享”按鈕的無用參數）
   bv_to_av: 將 BV 號轉爲 AV 號
+
+  group_player: 播放器
+  video_page_volume_boost: 音量增強
   comment_settings: 評論區
   block_comment_section: 封鎖評論區
   show_comment_ip_location: 顯示 IP 屬地

@@ -50,11 +50,13 @@ const NATIVE_RATES = [2, 1.5, 1.25, 1, 0.75, 0.5]
 function mountPlayer(rates: number[] = NATIVE_RATES) {
   document.body.innerHTML = `
     <div id="bilibili-player">
-      <video></video>
-      <div class="bpx-player-ctrl-btn bpx-player-ctrl-playbackrate">
-        <ul class="bpx-player-ctrl-playbackrate-menu">
-          ${rates.map(rate => `<li class="bpx-player-ctrl-playbackrate-menu-item" data-value="${rate}">${rate}x</li>`).join('')}
-        </ul>
+      <div class="bpx-player-container" data-screen="normal">
+        <video></video>
+        <div class="bpx-player-ctrl-btn bpx-player-ctrl-playbackrate">
+          <ul class="bpx-player-ctrl-playbackrate-menu">
+            ${rates.map(rate => `<li class="bpx-player-ctrl-playbackrate-menu-item" data-value="${rate}">${rate}x</li>`).join('')}
+          </ul>
+        </div>
       </div>
     </div>
   `
@@ -90,6 +92,9 @@ beforeEach(() => {
   settings.value.videoPagePlaybackRateList = ''
   settings.value.videoPageDisableLongPressSpeedUp = false
   settings.value.videoPageRememberPlaybackRate = false
+  settings.value.videoPageSpeedUpKeys = ['c']
+  settings.value.videoPageSlowDownKeys = ['x']
+  settings.value.videoPageResetSpeedKeys = ['z']
   lastPlaybackRate.value = 0
   document.body.innerHTML = ''
 })
@@ -112,7 +117,7 @@ it('reads a speed, and refuses to guess at one', () => {
 })
 
 it('reads a speed list, dropping what it cannot use', () => {
-  expect(parsePlaybackRateList('2 1.5 1')).toEqual([2, 1.5, 1])
+  expect(parsePlaybackRateList('0.5 1 1.5 2')).toEqual([0.5, 1, 1.5, 2])
   expect(parsePlaybackRateList('1 1.0 1.00')).toEqual([1])
   expect(parsePlaybackRateList('abc 2 x1')).toEqual([2])
   expect(parsePlaybackRateList('')).toEqual([])
@@ -155,7 +160,7 @@ it('settles a speed box on a value that will really be used', () => {
 })
 
 it('settles the list box the same way', () => {
-  expect(cleanupPlaybackRateListInput('2 1.5 1')).toBe('2 1.5 1')
+  expect(cleanupPlaybackRateListInput('0.5 1 1.5 2')).toBe('0.5 1 1.5 2')
   // 0、乱写的段、重复的都收走
   expect(cleanupPlaybackRateListInput('2 0 1.5x 2')).toBe('2 1.5')
   expect(cleanupPlaybackRateListInput('abc')).toBe('')
@@ -163,7 +168,7 @@ it('settles the list box the same way', () => {
 })
 
 it('lets the list box keep its spaces', () => {
-  expect(sanitizePlaybackRateListInput('2 1.5 1')).toBe('2 1.5 1')
+  expect(sanitizePlaybackRateListInput('0.5 1 1.5 2')).toBe('0.5 1 1.5 2')
   // 打完一个数要能接着打空格，所以尾空格留着；连着敲的空格并成一个
   expect(sanitizePlaybackRateListInput('2  1.5 ')).toBe('2 1.5 ')
   expect(sanitizePlaybackRateListInput('2, 1.5')).toBe('2 1.5')
@@ -208,6 +213,22 @@ it('puts the custom list in the player\'s own menu', async () => {
   expect(custom?.textContent).toBe('1.75x')
   // 补进来的档位按大小排在原位，菜单还是一列从快到慢
   expect(shownRates(menu)).toEqual([2, 1.75, 1])
+})
+
+it('keeps the menu increasing from bottom to top however the list is written', async () => {
+  ensureStarted()
+  // 这份列表曾按写下的顺序插档，几档新速度全挤在同一个锚点前，菜单成了 3 4 5 2 1.5 1
+  settings.value.videoPagePlaybackRateList = '1 1.5 2 3 4 5'
+  const { menu } = mountPlayer()
+
+  await vi.advanceTimersByTimeAsync(1000)
+
+  expect(shownRates(menu)).toEqual([5, 4, 3, 2, 1.5, 1])
+
+  // 写成别的顺序，落进菜单还是同一副样子
+  settings.value.videoPagePlaybackRateList = '3 1 5 2 4 1.5'
+  await nextTick()
+  expect(shownRates(menu)).toEqual([5, 4, 3, 2, 1.5, 1])
 })
 
 it('sets the speed when a custom entry is picked', async () => {
@@ -433,6 +454,105 @@ it('leaves long-press alone when neither setting is on', async () => {
 
   expect(video.playbackRate).toBe(3)
   release('ArrowRight')
+})
+
+it('steps through the rates with the shortcut keys and reports the change', async () => {
+  ensureStarted()
+  settings.value.videoPagePlaybackRateList = '0.5 1 1.5 2'
+  const { video } = mountPlayer()
+
+  await vi.advanceTimersByTimeAsync(1000)
+
+  press('c')
+  expect(video.playbackRate).toBe(1.5)
+  press('c')
+  expect(video.playbackRate).toBe(2)
+  // 已经是最快一档：再按不动，也不多报一声
+  press('c')
+  expect(video.playbackRate).toBe(2)
+
+  press('x')
+  expect(video.playbackRate).toBe(1.5)
+  press('z')
+  expect(video.playbackRate).toBe(1)
+
+  // 提示挂在播放器左上角，报的是最近调到的那一档，一「会」后收起
+  const hint = document.getElementById('bewly-rate-hint') as HTMLElement
+  expect(hint.textContent).toBe('（播放速度：1倍）')
+  expect(hint.style.opacity).toBe('1')
+  expect(hint.parentElement).toBe(document.querySelector('.bpx-player-container'))
+  await vi.advanceTimersByTimeAsync(1600)
+  expect(hint.style.opacity).toBe('0')
+})
+
+it('walks the player\'s own ladder when the list is empty', async () => {
+  ensureStarted()
+  const { video } = mountPlayer()
+
+  await vi.advanceTimersByTimeAsync(1000)
+
+  press('c')
+  expect(video.playbackRate).toBe(1.25)
+  press('x')
+  expect(video.playbackRate).toBe(1)
+})
+
+it('follows the key bindings the user wrote', async () => {
+  ensureStarted()
+  settings.value.videoPageSpeedUpKeys = ['d', 'e']
+  settings.value.videoPageSlowDownKeys = ['a']
+  settings.value.videoPageResetSpeedKeys = ['w']
+  const { video } = mountPlayer()
+
+  await vi.advanceTimersByTimeAsync(1000)
+
+  press('d')
+  expect(video.playbackRate).toBe(1.25)
+  press('e')
+  expect(video.playbackRate).toBe(1.5)
+  // c 已经不在绑定里了
+  press('c')
+  expect(video.playbackRate).toBe(1.5)
+  press('a')
+  expect(video.playbackRate).toBe(1.25)
+  press('w')
+  expect(video.playbackRate).toBe(1)
+})
+
+it('does not step several rates for one held key', async () => {
+  ensureStarted()
+  const { video } = mountPlayer()
+
+  await vi.advanceTimersByTimeAsync(1000)
+
+  window.dispatchEvent(new KeyboardEvent('keydown', { key: 'c', repeat: true, bubbles: true }))
+  expect(video.playbackRate).toBe(1)
+})
+
+it('stays quiet about the speed the page opens at', async () => {
+  ensureStarted()
+  settings.value.videoPageDefaultPlaybackRate = '1.5'
+  const { video } = mountPlayer()
+
+  await vi.advanceTimersByTimeAsync(1000)
+
+  expect(video.playbackRate).toBe(1.5)
+  // 进场的那一档不是「调节」，左上角不该先弹一声
+  expect(document.getElementById('bewly-rate-hint')).toBeNull()
+})
+
+it('keeps the shortcuts out of the fields the user is typing into', async () => {
+  ensureStarted()
+  const { video } = mountPlayer()
+
+  await vi.advanceTimersByTimeAsync(1000)
+
+  const field = document.createElement('input')
+  document.body.appendChild(field)
+  field.focus()
+  field.dispatchEvent(new KeyboardEvent('keydown', { key: 'c', bubbles: true }))
+
+  expect(video.playbackRate).toBe(1)
 })
 
 it('remembers the speed the user picks, and opens the next video at it', async () => {

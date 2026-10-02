@@ -24,6 +24,14 @@ const RATE_ACTIVE_CLASS = 'bpx-state-active'
 const RATE_CUSTOM_ATTR = 'data-bewly-rate-item'
 /** 被列表挤掉的原生条目，撤掉列表时按它恢复。 */
 const RATE_HIDDEN_ATTR = 'data-bewly-rate-hidden'
+/**
+ * 倍速提示挂在这里。播放器外壳 `#bilibili-player` 是 static（实测），做不了定位锚点；真正
+ * relative 的是 `.bpx-player-container` 那一层。
+ */
+const RATE_HINT_HOST_SELECTOR = '.bpx-player-container'
+const RATE_HINT_ID = 'bewly-rate-hint'
+/** 提示显示的「一会」。 */
+const RATE_HINT_DURATION = 1600
 
 /** 浏览器自己允许的速度区间，超出去写 `playbackRate` 会抛 NotSupportedError。 */
 export const MIN_PLAYBACK_RATE = 0.0625
@@ -96,7 +104,7 @@ export function parsePlaybackRate(text: string): number | null {
 }
 
 /**
- * 读一行速度列表（空格分隔，如 `2 1.5 1`）：认不出的整段跳过，重复的只留一个，按写下来的顺序返回。
+ * 读一行速度列表（空格分隔，如 `0.5 1 1.5 2`）：认不出的整段跳过，重复的只留一个，按写下来的顺序返回。
  */
 export function parsePlaybackRateList(text: string, limit = MAX_PLAYBACK_RATE_LIST): number[] {
   const rates: number[] = []
@@ -119,6 +127,37 @@ export function formatPlaybackRate(rate: number): string {
   const rounded = Math.round(rate * 100) / 100
   return `${rounded % 1 === 0 ? rounded.toFixed(1) : rounded}x`
 }
+
+/** 左上角提示里的数：`1.5`、`2` 这样不带多余的零，跟菜单的 `2.0x` 是两副写法。 */
+export function formatRateForHint(rate: number): string {
+  return String(Number(rate.toFixed(2)))
+}
+
+/**
+ * 快捷键的键位表：键名统一小写（`event.key` 的小写形式，`c`、`arrowup` 这样），重复的只留一个。
+ */
+export function normalizeSpeedKeys(keys: string[]): string[] {
+  const normalized: string[] = []
+  for (const key of keys) {
+    const name = String(key).trim().toLowerCase()
+    if (name && !normalized.includes(name))
+      normalized.push(name)
+  }
+  return normalized
+}
+
+/** 键位输入框只认键名用得上的字符：字母数字、隔开多个键的空格和逗号。 */
+export function sanitizeSpeedKeysInput(text: string): string {
+  return String(text).replace(/[^\w ,，、]/g, '')
+}
+
+/** 离开键位输入框时收成真正会生效的那份：按分隔符拆开、小写化、去重，再并成一行。 */
+export function cleanupSpeedKeysInput(text: string): string {
+  return normalizeSpeedKeys(String(text).split(/[\s,，、]+/)).join(' ')
+}
+
+/** 没写倍速列表时，快捷键按播放器自带的那几档走。 */
+export const NATIVE_RATE_LADDER = [2, 1.5, 1.25, 1, 0.75, 0.5]
 
 function readRate(item: Element): number | null {
   return parsePlaybackRate(item.getAttribute('data-value') ?? '')
@@ -164,14 +203,18 @@ function menuMatches(menu: Element, rates: number[]): boolean {
  * 删掉就再也回不来了。
  */
 function rewriteMenu(menu: Element, rates: number[], onPick: (rate: number) => void) {
-  if (menuMatches(menu, rates))
+  // 菜单一列从快到慢（播放器自己的写法，也就是从下到上递增）。列表按用户写下的顺序来，
+  // 插进菜单前先排成这个样子，不然两档都插到同一个锚点前时会写成反的。
+  const ordered = [...rates].sort((a, b) => b - a)
+
+  if (menuMatches(menu, ordered))
     return
 
   restoreMenu(menu)
-  if (!rates.length)
+  if (!ordered.length)
     return
 
-  const missing = new Set(rates)
+  const missing = new Set(ordered)
 
   for (const item of Array.from(menu.querySelectorAll(RATE_ITEM_SELECTOR))) {
     const rate = readRate(item)
@@ -184,7 +227,7 @@ function rewriteMenu(menu: Element, rates: number[], onPick: (rate: number) => v
     }
   }
 
-  for (const rate of rates) {
+  for (const rate of ordered) {
     if (!missing.has(rate))
       continue
 
@@ -195,7 +238,7 @@ function rewriteMenu(menu: Element, rates: number[], onPick: (rate: number) => v
     item.textContent = formatPlaybackRate(rate)
     item.addEventListener('click', () => onPick(rate))
 
-    // 按大小插进播放器自己的顺序里，菜单看起来还是一列从快到慢
+    // 列表已经排好，每档都插到第一个比它小的条目（含自己刚插的）前面，菜单保持一列从快到慢
     const next = Array.from(menu.querySelectorAll(RATE_ITEM_SELECTOR))
       .find(el => !el.hasAttribute(RATE_CUSTOM_ATTR) && (readRate(el) ?? 0) < rate)
     menu.insertBefore(item, next ?? null)
@@ -233,6 +276,10 @@ export function setupPlaybackSpeed() {
   let loadedAt = 0
   let userChanged = false
   let verifyTimer: number | undefined
+  /** 左上角的倍速提示，以及它收起用的计时器和上回展示过的那一档（按值去重）。 */
+  let rateHint: HTMLDivElement | null = null
+  let rateHintTimer: number | undefined
+  let lastShownRate = -1
 
   function currentVideo(): HTMLVideoElement | null {
     return document.querySelector<HTMLVideoElement>(VIDEO_SELECTOR)
@@ -307,9 +354,11 @@ export function setupPlaybackSpeed() {
       return
 
     video?.removeEventListener('ratechange', handleRateChange)
+    video?.removeEventListener('ratechange', handleRateHint)
     video?.removeEventListener('loadedmetadata', handleLoaded)
     video = target
     target.addEventListener('ratechange', handleRateChange)
+    target.addEventListener('ratechange', handleRateHint)
     target.addEventListener('loadedmetadata', handleLoaded)
     // 绑定的时候视频可能已经载入完了，loadedmetadata 不会再响一次
     handleLoaded()
@@ -411,16 +460,133 @@ export function setupPlaybackSpeed() {
   }
 
   function handleKeyDown(event: KeyboardEvent) {
-    if (event.key !== 'ArrowRight' || isEditable(event) || event.repeat)
-      // 连按产生的 repeat 事件不算一次新的长按，第一次按下时已经开始计时了
+    if (isEditable(event))
       return
 
-    startPress()
+    if (event.key === 'ArrowRight') {
+      // 连按产生的 repeat 事件不算一次新的长按，第一次按下时已经开始计时了
+      if (!event.repeat)
+        startPress()
+      return
+    }
+
+    // 倍速快捷键：按住不连发，一下走一档
+    if (event.repeat)
+      return
+
+    const key = event.key.toLowerCase()
+    if (normalizeSpeedKeys(settings.value.videoPageSpeedUpKeys).includes(key))
+      stepRate(1)
+    else if (normalizeSpeedKeys(settings.value.videoPageSlowDownKeys).includes(key))
+      stepRate(-1)
+    else if (normalizeSpeedKeys(settings.value.videoPageResetSpeedKeys).includes(key))
+      pickRate(1)
   }
 
   function handleKeyUp(event: KeyboardEvent) {
     if (event.key === 'ArrowRight')
       stopHold()
+  }
+  // #endregion
+
+  // #region 倍速快捷键
+  /**
+   * 快捷键走的阶梯：写了倍速列表就按那份（从快到慢），没写就按播放器自带的那几档。
+   */
+  function rateLadder(): number[] {
+    const custom = parsePlaybackRateList(settings.value.videoPagePlaybackRateList)
+    return custom.length ? [...custom].sort((a, b) => b - a) : NATIVE_RATE_LADDER
+  }
+
+  /** 加速挑比当前快的最小一档，减速挑比当前慢的最大一档；已经顶到头了就不动。 */
+  function stepRate(direction: 1 | -1) {
+    if (!video || pressActive)
+      return
+
+    const ladder = rateLadder()
+    const current = video.playbackRate
+    const target = direction === 1
+      ? [...ladder].reverse().find(rate => rate > current)
+      : ladder.find(rate => rate < current)
+
+    if (target !== undefined)
+      pickRate(target)
+  }
+  // #endregion
+
+  // #region 倍速提示
+  function ensureRateHint(): HTMLDivElement | null {
+    if (rateHint?.isConnected)
+      return rateHint
+
+    const host = document.querySelector(RATE_HINT_HOST_SELECTOR)
+    if (!host)
+      return null
+
+    if (!rateHint) {
+      rateHint = document.createElement('div')
+      rateHint.id = RATE_HINT_ID
+      // 样式全走内联：这是主世界页面上的节点，靠不上扩展自己的样式表
+      rateHint.style.cssText = [
+        'position:absolute',
+        'top:12px',
+        'left:12px',
+        'z-index:30',
+        'padding:4px 12px',
+        'border-radius:6px',
+        'background:rgba(0,0,0,0.6)',
+        'color:#fff',
+        'font-size:13px',
+        'line-height:1.6',
+        'pointer-events:none',
+        'opacity:0',
+        'transition:opacity 0.2s',
+      ].join(';')
+    }
+    host.appendChild(rateHint)
+    return rateHint
+  }
+
+  function showRateHint(rate: number) {
+    const hint = ensureRateHint()
+    if (!hint)
+      return
+
+    hint.textContent = `（播放速度：${formatRateForHint(rate)}倍）`
+    hint.style.opacity = '1'
+    if (rateHintTimer !== undefined)
+      window.clearTimeout(rateHintTimer)
+    rateHintTimer = window.setTimeout(() => {
+      rateHintTimer = undefined
+      hint.style.opacity = '0'
+    }, RATE_HINT_DURATION)
+  }
+
+  /**
+   * 速度一变就报一声，不管这变化来自快捷键、菜单还是播放器自己。刚加载的那一小段不报——
+   * 进场设的默认速度、播放器的安顿，都不是「调节」，每开一个页面先弹一下就成了噪音。
+   */
+  function handleRateHint() {
+    if (!video)
+      return
+
+    const rate = video.playbackRate
+    if (rate === lastShownRate)
+      return
+    if (loadedAt && Date.now() - loadedAt < LOAD_SETTLE_WINDOW && !userChanged)
+      return
+
+    lastShownRate = rate
+    showRateHint(rate)
+  }
+
+  function hideRateHint() {
+    if (rateHintTimer !== undefined) {
+      window.clearTimeout(rateHintTimer)
+      rateHintTimer = undefined
+    }
+    rateHint?.remove()
+    rateHint = null
   }
   // #endregion
 
@@ -524,10 +690,12 @@ export function setupPlaybackSpeed() {
       window.clearTimeout(verifyTimer)
     stopHold()
     menuObserver?.disconnect()
+    hideRateHint()
     window.removeEventListener('keydown', handleKeyDown, true)
     window.removeEventListener('keyup', handleKeyUp, true)
     window.removeEventListener('blur', handleWindowBlur)
     video?.removeEventListener('ratechange', handleRateChange)
+    video?.removeEventListener('ratechange', handleRateHint)
     video?.removeEventListener('loadedmetadata', handleLoaded)
     if (menu)
       restoreMenu(menu)

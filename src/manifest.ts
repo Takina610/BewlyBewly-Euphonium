@@ -125,7 +125,8 @@ export async function getManifest() {
 
     web_accessible_resources: [
       {
-        resources: ['dist/contentScripts/style.css', 'assets/*'],
+        // 'assets/ambientlight/*'：氛围光的噪点纹理，路径由 vendor 的 ambientlight.js 拼出来
+        resources: ['dist/contentScripts/style.css', 'assets/*', 'assets/ambientlight/*'],
         matches: ['<all_urls>'],
         // matches: ['./assets/*'],
       },

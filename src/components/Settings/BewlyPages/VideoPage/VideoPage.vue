@@ -4,9 +4,12 @@ import { settings } from '~/logic'
 import {
   cleanupPlaybackRateInput,
   cleanupPlaybackRateListInput,
+  cleanupSpeedKeysInput,
   hasPlaybackRateSign,
+  normalizeSpeedKeys,
   sanitizePlaybackRateInput,
   sanitizePlaybackRateListInput,
+  sanitizeSpeedKeysInput,
 } from '~/logic/playbackSpeed'
 import { isVideoOrBangumiPage } from '~/utils/main'
 
@@ -78,6 +81,24 @@ function playbackSpeedSettler(key: PlaybackSpeedKey) {
 function writePlaybackSpeed(event: Event, key: PlaybackSpeedKey) {
   const input = event.target as HTMLInputElement
   settings.value[key] = input.value
+}
+
+type SpeedKeysKey = 'videoPageSpeedUpKeys' | 'videoPageSlowDownKeys' | 'videoPageResetSpeedKeys'
+
+/** 键位框的输入过滤：只认键名用得上的字符（字母数字、空格、逗号），别的挡在框外。 */
+function speedKeysSanitizer(text: string) {
+  return sanitizeSpeedKeysInput(text)
+}
+
+/** 离开键位框时收成真正会生效的那份：小写化、去重、多键并成一行。 */
+function speedKeysSettler(text: string) {
+  return cleanupSpeedKeysInput(text)
+}
+
+/** 键位框写的是数组，框里那行文本按分隔符拆开、归一化后再存。 */
+function writeSpeedKeys(event: Event, key: SpeedKeysKey) {
+  const input = event.target as HTMLInputElement
+  settings.value[key] = normalizeSpeedKeys(input.value.split(/[\s,，、]+/))
 }
 
 /**
@@ -325,6 +346,46 @@ function keepKeysInForm() {}
 
         <SettingsItem :title="$t('settings.remember_playback_speed')">
           <Radio v-model="settings.videoPageRememberPlaybackRate" />
+        </SettingsItem>
+
+        <!--
+          倍速快捷键：加速、减速、回到 1 倍速。一个动作认多个键，框里用空格或逗号隔开。
+          变速时播放器左上角会报一声当前那一档。
+        -->
+        <SettingsItem :title="$t('settings.speed_up_keys')">
+          <Input
+            :model-value="settings.videoPageSpeedUpKeys.join(' ')"
+            :placeholder="$t('settings.speed_keys_example')"
+            :sanitize="speedKeysSanitizer"
+            :settle="speedKeysSettler"
+            @keydown.stop.passive="keepKeysInForm"
+            @input="writeSpeedKeys($event, 'videoPageSpeedUpKeys')"
+            @change="writeSpeedKeys($event, 'videoPageSpeedUpKeys')"
+          />
+        </SettingsItem>
+
+        <SettingsItem :title="$t('settings.slow_down_keys')">
+          <Input
+            :model-value="settings.videoPageSlowDownKeys.join(' ')"
+            :placeholder="$t('settings.speed_keys_example')"
+            :sanitize="speedKeysSanitizer"
+            :settle="speedKeysSettler"
+            @keydown.stop.passive="keepKeysInForm"
+            @input="writeSpeedKeys($event, 'videoPageSlowDownKeys')"
+            @change="writeSpeedKeys($event, 'videoPageSlowDownKeys')"
+          />
+        </SettingsItem>
+
+        <SettingsItem :title="$t('settings.reset_speed_keys')">
+          <Input
+            :model-value="settings.videoPageResetSpeedKeys.join(' ')"
+            :placeholder="$t('settings.speed_keys_example')"
+            :sanitize="speedKeysSanitizer"
+            :settle="speedKeysSettler"
+            @keydown.stop.passive="keepKeysInForm"
+            @input="writeSpeedKeys($event, 'videoPageResetSpeedKeys')"
+            @change="writeSpeedKeys($event, 'videoPageResetSpeedKeys')"
+          />
         </SettingsItem>
       </SettingsItemGroup>
     </template>

@@ -46,4 +46,9 @@ export default antfu(
       'simple-import-sort/exports': 'error',
     },
   },
+  {
+    // Vendored from https://github.com/iceorange-dev/bilibili-ambilight (MIT) — kept as-is
+    // except for a few marked wiring patches, so it does not follow this repo's style rules
+    ignores: ['src/ambientlight/**'],
+  },
 )

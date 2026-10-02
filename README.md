@@ -57,4 +57,6 @@ See [docs/CONTRIBUTING.md](https://github.com/Takina610/BewlyBewly-Euphonium/blo
 - [BewlyBewly! Ave Mujica](https://github.com/VentusUta/BewlyBewly-AveMujica) - The fork this project is based on
 - [UserScripts/bilibiliHome](https://github.com/indefined/UserScripts/tree/master/bilibiliHome), [bilibili-app-recommend](https://github.com/magicdawn/bilibili-app-recommend) - Reference source for obtaining the access key
 - [Bilibili-Evolved](https://github.com/the1812/Bilibili-Evolved) - Partial implementation of functionalities
+- [bilibili-ambilight](https://github.com/iceorange-dev/bilibili-ambilight) - The ambient light effect on video pages
+- [Ambient light for YouTube™](https://github.com/WesselKroos/youtube-ambilight) - The original project bilibili-ambilight was adapted from
 - [bilibili-API-collect](https://github.com/SocialSisterYi/bilibili-API-collect)

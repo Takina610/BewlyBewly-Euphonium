@@ -44,7 +44,7 @@ onMounted(() => {
       appearance-none outline-none bg="$bew-fill-1" rounded="$b-slider-height"
       border="size-$b-border-width color-$bew-border-color" w="$b-slider-width" h="$b-slider-height"
     >
-    <span>{{ label }}</span>
+    <span whitespace-nowrap shrink-0>{{ label }}</span>
   </label>
 </template>
 

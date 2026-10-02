@@ -73,6 +73,11 @@ export interface Settings {
 
   showVideoPageBackground: boolean
   roundedVideoPlayer: boolean
+  /**
+   * 氛围光（ambilight）：在视频页铺一圈跟着画面走的光晕，播放器控制栏会多出它的设置按钮。
+   * 默认开启；效果移植自 bilibili-ambilight（见 README 的 Credits）。
+   */
+  videoPageAmbilight: boolean
   videoPageDanmakuStyle: 'auto' | 'on' | 'off'
   videoPageVideoPodStyle: 'auto' | 'on' | 'off'
   /**
@@ -92,13 +97,25 @@ export interface Settings {
    */
   videoPageLongPressPlaybackRate: string
   /**
-   * 自定义倍速列表，空格分隔（`2 1.5 1`）。空字符串表示不动播放器自带的列表。
+   * 自定义倍速列表，空格分隔（`0.5 1 1.5 2`）。空字符串表示不动播放器自带的列表。
    */
   videoPagePlaybackRateList: string
   /** 禁止长按方向键倍速播放。 */
   videoPageDisableLongPressSpeedUp: boolean
   /** 记住播放速度变化：用户把速度改到多少，下次打开视频页就用多少。 */
   videoPageRememberPlaybackRate: boolean
+  /**
+   * 倍速快捷键：加速、减速、回到 1 倍速。每个动作认一组键，键名是 `event.key` 的小写形式
+   * （`c`、`arrowup` 这样）。倍速按「倍速列表」逐档走，列表没写就按播放器自带的那几档。
+   */
+  videoPageSpeedUpKeys: string[]
+  videoPageSlowDownKeys: string[]
+  videoPageResetSpeedKeys: string[]
+  /**
+   * 音量增强：播放器的音量滑块变成 0–200% 的量程（滑块一半处就是 100%），超过 100% 的部分
+   * 由 Web Audio 的增益节点补上。
+   */
+  videoPageVolumeBoost: boolean
 
   /** 进视频页时自动点赞一次（已经赞过的、没登录的都不动）。 */
   videoPageAutoLike: boolean
@@ -335,6 +352,7 @@ export const originalSettings: Settings = {
 
   showVideoPageBackground: false,
   roundedVideoPlayer: false,
+  videoPageAmbilight: true,
   videoPageDanmakuStyle: 'off',
   videoPageVideoPodStyle: 'off',
   videoPageDanmakuLevelFilter: 0,
@@ -346,13 +364,17 @@ export const originalSettings: Settings = {
   videoPagePlaybackRateList: '',
   videoPageDisableLongPressSpeedUp: false,
   videoPageRememberPlaybackRate: false,
+  videoPageSpeedUpKeys: ['c'],
+  videoPageSlowDownKeys: ['x'],
+  videoPageResetSpeedKeys: ['z'],
+  videoPageVolumeBoost: false,
 
-  // 视频页净化：默认一声不响，等用户自己挑要清什么
+  // 视频页净化：默认全开，进视频页就是干净的样子，不想要的再自己关
   videoPageAutoLike: false,
   videoPageRemovedPopups: [],
-  videoPageRemoveChargeButton: false,
-  videoPageBlockLiveOrder: false,
-  videoPageBlockActivityTag: false,
+  videoPageRemoveChargeButton: true,
+  videoPageBlockLiveOrder: true,
+  videoPageBlockActivityTag: true,
 
   videoPageRemoveChargeExclusiveVideo: false,
   videoPageRemovePromotedVideos: false,
@@ -409,7 +431,7 @@ export const originalSettings: Settings = {
   trendingFilterByDuration: false,
   trendingFilterLikeViewRatio: false,
 
-  followingTabShowLivestreamingVideos: true,
+  followingTabShowLivestreamingVideos: false,
 
   homePageTabVisibilityList: [],
   alwaysShowTabsOnHomePage: false,
@@ -441,7 +463,7 @@ export const originalSettings: Settings = {
   legacyPlayerLoadingScreen: false,
   videoPageRememberWebFullscreen: true,
   showCommentIpLocation: true,
-  showCommentGender: false,
+  showCommentGender: true,
   blockCommentSection: false,
   enableCommentFilter: false,
   commentFilterOnlyAt: false,
@@ -476,19 +498,18 @@ export const settings = useStorageLocal('settings', ref<Settings>(originalSettin
 
 export type GridLayoutType = 'adaptive' | 'twoColumns' | 'oneColumn'
 
+export const defaultGridLayout: GridLayout = { home: 'adaptive' }
+export const defaultSidePanel = { home: true }
+
 export interface GridLayout {
   home: GridLayoutType
 }
 
-export const gridLayout = useStorageLocal('gridLayout', ref<GridLayout>({
-  home: 'adaptive',
-}), { mergeDefaults: true })
+export const gridLayout = useStorageLocal('gridLayout', ref<GridLayout>(defaultGridLayout), { mergeDefaults: true })
 
 export const sidePanel = useStorageLocal('sidePanel', ref<{
   home: boolean
-}>({
-  home: true,
-}), { mergeDefaults: true })
+}>(defaultSidePanel), { mergeDefaults: true })
 
 /**
  * Monotonic counter used to number the disguised tab titles ("report #3"), so that

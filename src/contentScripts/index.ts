@@ -1,4 +1,7 @@
 import '~/styles'
+// 氛围光（vendor 自 bilibili-ambilight）的页面样式：全部挂在 html[data-ambientlight-enabled] 或
+// 它自己的光层类名下，开关没开时不会改到任何东西
+import '~/ambientlight/content.scss'
 import 'uno.css'
 
 import { createApp } from 'vue'
@@ -6,6 +9,7 @@ import { createApp } from 'vue'
 import { useDark } from '~/composables/useDark'
 import { BEWLY_MOUNTED } from '~/constants/globalEvents'
 import { settings } from '~/logic'
+import { setupAmbilight } from '~/logic/ambilight'
 import { setupCommentCleanup } from '~/logic/commentCleanup'
 import { setupCommentFilter } from '~/logic/commentFilter'
 import { setupCommentIpLocation } from '~/logic/commentIpLocation'
@@ -23,6 +27,7 @@ import { setupVideoPageCleanup } from '~/logic/videoPageCleanup'
 import { setupVideoPageDanmakuCount } from '~/logic/videoPageDanmakuCount'
 import { setupVideoPageRecommendationFilter } from '~/logic/videoPageRecommendationFilter'
 import { setupVideoPageRelateFilter } from '~/logic/videoPageRelateFilter'
+import { setupVolumeBoost } from '~/logic/volumeBoost'
 import { setupWebFullscreenMemory } from '~/logic/webFullscreenMemory'
 import RESET_BEWLY_CSS from '~/styles/reset.css?raw'
 import { runWhenIdle } from '~/utils/lazyLoad'
@@ -237,8 +242,15 @@ if (isSupportedPages() || isSupportedIframePages() || isStylesOnlyPage) {
 
   // The speed settings belong to the player, not to the page around it: the drawer's frame renders a
   // video page of its own, and a speed picked there is just as much the user's choice as anywhere else.
-  if (isVideoOrBangumiPage())
+  // The same goes for the volume slider, so the boost rides along.
+  if (isVideoOrBangumiPage()) {
     setupPlaybackSpeed()
+    setupVolumeBoost()
+  }
+
+  // 氛围光铺在整页背后，抽屉的 iframe 里没有「整页」可言，也不该替外面的页面做主
+  if (!isInIframe() && isVideoOrBangumiPage())
+    setupAmbilight()
 
   // 个人空间页上那几个数字（粉丝、关注、获赞）是 B 站自己渲染的，完整值只在 title 里
   if (!isInIframe() && /^https?:\/\/space\.bilibili\.com\//.test(currentUrl))

@@ -56,4 +56,6 @@ BewlyBewly! Euphonium 係一個用於 bilibili 嘅瀏覽器延伸功能，目的
 - [BewlyBewly! Ave Mujica](https://github.com/VentusUta/BewlyBewly-AveMujica)——本專案所基於嘅分叉
 - [UserScripts/bilibiliHome](https://github.com/indefined/UserScripts/tree/master/bilibiliHome)、[bilibili-app-recommend](https://github.com/magicdawn/bilibili-app-recommend)——參考取得 access key 之方法
 - [Bilibili-Evolved](https://github.com/the1812/Bilibili-Evolved)——部分功能嘅實現
+- [bilibili-ambilight](https://github.com/iceorange-dev/bilibili-ambilight)——影片頁氛圍光效果嘅來源
+- [Ambient light for YouTube™](https://github.com/WesselKroos/youtube-ambilight)——bilibili-ambilight 改編自嘅原項目
 - [bilibili-API-collect](https://github.com/SocialSisterYi/bilibili-API-collect)

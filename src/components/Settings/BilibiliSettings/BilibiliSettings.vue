@@ -33,6 +33,12 @@ import SettingsItemGroup from '../components/SettingsItemGroup.vue'
       </SettingsItemGroup>
     </SettingsItemGroup>
 
+    <SettingsItemGroup :title="$t('settings.group_player')">
+      <SettingsItem :title="$t('settings.video_page_volume_boost')">
+        <Radio v-model="settings.videoPageVolumeBoost" />
+      </SettingsItem>
+    </SettingsItemGroup>
+
     <!--
       数量精确显示管的是顶栏「我的」面板与个人空间页头部那几个数（动态、关注、粉丝、获赞），
       与评论区无关，所以不跟 IP 属地一起摆在评论区那一组里。

@@ -60,8 +60,11 @@ html.bewly-design,
   background-image: none;
 }
 
-.dark.bewly-design body,
-html.dark.bewly-design {
+// 深色模式下给页面涂 Bewly 底色。氛围光开着时让路：它的光层垫在 body 背景之下（z-index -1），
+// 这里涂上不透明底色会把光晕整个盖住——视频页上由它管页面底色（html 的 data-bewly-amb-enabled
+// 由 ambilight 引擎在运行时挂上）
+.dark.bewly-design:not([data-bewly-amb-enabled]) body,
+html.dark.bewly-design:not([data-bewly-amb-enabled]) {
   background-color: var(--bew-bg) !important;
 }
 

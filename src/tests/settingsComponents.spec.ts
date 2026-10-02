@@ -311,10 +311,10 @@ it('renders the playback speed group of the video page tab', async () => {
 
   const inputs = Array.from(host!.querySelectorAll<HTMLInputElement>('input'))
   settings.value.videoPageDefaultPlaybackRate = '1.5'
-  settings.value.videoPagePlaybackRateList = '2 1.5 1'
+  settings.value.videoPagePlaybackRateList = '0.5 1 1.5 2'
   await nextTick()
   expect(inputs.some(input => input.value === '1.5')).toBe(true)
-  expect(inputs.some(input => input.value === '2 1.5 1')).toBe(true)
+  expect(inputs.some(input => input.value === '0.5 1 1.5 2')).toBe(true)
 
   const speedUpSwitch = switchFor(host!, 'settings.disable_long_press_speed_up')
   expect(speedUpSwitch, 'the long-press speed-up switch').not.toBeNull()
@@ -324,6 +324,45 @@ it('renders the playback speed group of the video page tab', async () => {
   settings.value.videoPageDisableLongPressSpeedUp = false
   settings.value.videoPageDefaultPlaybackRate = ''
   settings.value.videoPagePlaybackRateList = ''
+
+  app.unmount()
+})
+
+/**
+ * 倍速组又长了三个键位框（加速、减速、恢复 1 倍速），一个动作认多个键。框里写的是给人看的
+ * 一行文本，落进 settings 的得是归一化过的键名数组——大小写、分隔符、重复都要在这一站收拾掉。
+ */
+it('stores the shortcut key boxes as a normalized key list', async () => {
+  const app = await mountTab(VideoPage)
+
+  for (const key of ['settings.speed_up_keys', 'settings.slow_down_keys', 'settings.reset_speed_keys'])
+    expect(host!.innerHTML).toContain(key)
+
+  const keyInputs = Array.from(host!.querySelectorAll<HTMLInputElement>('input'))
+    .filter(input => input.placeholder === 'settings.speed_keys_example')
+  expect(keyInputs, 'the three key boxes').toHaveLength(3)
+  const [up, down, reset] = keyInputs
+
+  // 输入当中就落数组：大小写、分隔符在这里收
+  up.value = 'C D x'
+  up.dispatchEvent(new Event('input', { bubbles: true }))
+  await nextTick()
+  expect(settings.value.videoPageSpeedUpKeys).toEqual(['c', 'd', 'x'])
+
+  // 离开输入框时框里也收成归一化后的样子
+  up.dispatchEvent(new Event('change', { bubbles: true }))
+  await nextTick()
+  expect(up.value).toBe('c d x')
+
+  down.value = 'x，左'
+  down.dispatchEvent(new Event('input', { bubbles: true }))
+  await nextTick()
+  expect(settings.value.videoPageSlowDownKeys).toEqual(['x'])
+
+  reset.value = 'z'
+  reset.dispatchEvent(new Event('input', { bubbles: true }))
+  await nextTick()
+  expect(settings.value.videoPageResetSpeedKeys).toEqual(['z'])
 
   app.unmount()
 })
@@ -494,6 +533,54 @@ it('renders the comment filter and the exact-count switch of the bilibili settin
   settings.value.enableCommentFilter = false
   settings.value.showExactCounts = true
 
+  app.unmount()
+})
+
+/**
+ * The bilibili tab gained a player group with the volume boost. The switch has to bind the very
+ * setting the content script reads, and to live in its own group rather than among the
+ * content-block switches above it.
+ */
+it('binds the volume boost switch on the bilibili settings tab', async () => {
+  const app = await mountTab(BilibiliSettings)
+
+  const html = host!.innerHTML
+  expect(html).toContain('settings.group_player')
+  expect(html).toContain('settings.video_page_volume_boost')
+
+  const boostSwitch = switchFor(host!, 'settings.video_page_volume_boost')
+  expect(boostSwitch, 'the volume boost switch').not.toBeNull()
+
+  const boostGroup = Array.from(host!.querySelectorAll<HTMLElement>('.b-settings-item'))
+    .find(el => el.textContent?.includes('settings.video_page_volume_boost'))
+    ?.closest('.b-settings-item-group')?.textContent
+  expect(boostGroup).toContain('settings.group_player')
+  expect(boostGroup).not.toContain('settings.block_ads')
+
+  settings.value.videoPageVolumeBoost = true
+  await nextTick()
+  expect(boostSwitch!.checked).toBe(true)
+
+  settings.value.videoPageVolumeBoost = false
+  app.unmount()
+})
+
+/**
+ * The appearance tab gained the ambient light. It lives there because it is a look, and the switch
+ * title is where the fact that it acts on the bilibili video page belongs.
+ */
+it('binds the ambient light switch on the appearance tab', async () => {
+  const app = await mountTab(Appearance)
+
+  expect(host!.innerHTML).toContain('settings.video_page_ambilight')
+  const ambSwitch = switchFor(host!, 'settings.video_page_ambilight')
+  expect(ambSwitch, 'the ambient light switch').not.toBeNull()
+
+  settings.value.videoPageAmbilight = true
+  await nextTick()
+  expect(ambSwitch!.checked).toBe(true)
+
+  settings.value.videoPageAmbilight = false
   app.unmount()
 })
 

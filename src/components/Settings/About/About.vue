@@ -2,7 +2,7 @@
 import { useI18n } from 'vue-i18n'
 import browser from 'webextension-polyfill'
 
-import { originalSettings, settings } from '~/logic'
+import { defaultGridLayout, defaultSidePanel, gridLayout, originalSettings, settings, sidePanel } from '~/logic'
 
 import { version } from '../../../../package.json'
 
@@ -45,6 +45,13 @@ function handleImportSettings() {
               (settings.value as any)[key] = jsonObject[key]
           })
 
+          // The home page's layout and side panel live outside `settings`; old exports without
+          // them simply leave them alone
+          if (jsonObject.gridLayout)
+            gridLayout.value = { ...gridLayout.value, ...jsonObject.gridLayout }
+          if (jsonObject.sidePanel)
+            sidePanel.value = { ...sidePanel.value, ...jsonObject.sidePanel }
+
           importSettingsRef.value?.removeEventListener('change', handleChange)
         }
         reader.readAsText(selectedFile)
@@ -56,7 +63,13 @@ function handleImportSettings() {
 }
 
 function handleExportSettings() {
-  const jsonStr = JSON.stringify(settings.value)
+  // Everything the import can put back: `settings` plus the two home page preferences kept
+  // in their own storage keys
+  const jsonStr = JSON.stringify({
+    ...settings.value,
+    gridLayout: gridLayout.value,
+    sidePanel: sidePanel.value,
+  })
   const blob = new Blob([jsonStr], { type: 'application/json' })
   const url = URL.createObjectURL(blob)
   const a = document.createElement('a')
@@ -74,6 +87,8 @@ function handleResetSettings() {
     // Remember the last selected language when resetting settings
     originalSettings.language = settings.value.language
     settings.value = { ...originalSettings }
+    gridLayout.value = { ...defaultGridLayout }
+    sidePanel.value = { ...defaultSidePanel }
   }
 }
 

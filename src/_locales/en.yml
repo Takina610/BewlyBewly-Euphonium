@@ -116,9 +116,13 @@ settings:
   long_press_playback_speed: Long-press speed (leave empty to change nothing)
   playback_speed_list: Custom speed list (space separated, leave empty to change nothing)
   playback_speed_example: '1.5'
-  playback_speed_list_example: 2 1.5 1
+  playback_speed_list_example: 0.5 1 1.5 2
   disable_long_press_speed_up: Disable long-press speed-up
   remember_playback_speed: Remember speed changes
+  speed_up_keys: Speed-up shortcut
+  slow_down_keys: Slow-down shortcut
+  reset_speed_keys: Reset speed shortcut
+  speed_keys_example: c x
   group_slacking: Slacking Mode
   group_slacking_desc: Makes bilibili look like a plain, motionless work page at a glance, so that a passer-by cannot tell what you are watching. Your theme colours stay as they are — the page is dimmed, not repainted.
   group_slacking_trigger: How to toggle
@@ -237,6 +241,7 @@ settings:
   customize_css_desc: If you are unfamiliar with CSS, please DO NOT modify CSS. Doing so may cause unexpected display issues. If you encounter any problems after modifying CSS, please reinstall BewlyBewly.
 
   # Video page
+  video_page_ambilight: Ambient light (glow behind the video page)
   show_video_page_background: Show background image on video playback page
   show_video_page_background_desc: Make some elements in the bottom layer of the video page transparent to show your global background image.
   video_page_danmaku_style: Danmaku list frosted glass effect
@@ -428,6 +433,9 @@ settings:
   url_trim_settings: URL Trim
   clean_url_argument: Remove unnecessary URL argument (will also remove unnecessary URL argument of 'Share' button)
   bv_to_av: Convert BV number to AV number
+
+  group_player: Player
+  video_page_volume_boost: Volume boost
   comment_settings: Comments
   block_comment_section: Hide the comment section
   show_comment_ip_location: Show IP location

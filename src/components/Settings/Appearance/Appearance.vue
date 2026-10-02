@@ -132,6 +132,15 @@ function changeWallpaper(url: string) {
 
       <ChangeWallpaper type="global" />
 
+      <!--
+        氛围光改的是 B 站视频页（光铺在页面背后），不影响 Bewly 自己的页面，所以跟壁纸放同一页。
+      -->
+      <SettingsItemGroup>
+        <SettingsItem :title="$t('settings.video_page_ambilight')">
+          <Radio v-model="settings.videoPageAmbilight" />
+        </SettingsItem>
+      </SettingsItemGroup>
+
       <SettingsItemGroup>
         <SettingsItem :title="$t('settings.customize_css')">
           <Radio v-model="settings.customizeCSS" />
