@@ -534,7 +534,14 @@ function injectCommentMeta(actionButtons) {
     anchor.after(makeCommentMetaSpan(COMMENT_GENDER_CLASS, meta.gender, shadowRoot))
 }
 
-function setupCommentIpLocation() {
+/**
+ * 评论区功能共用的绑定与观察机制：找到每个评论宿主（含 webview 版），顺着 shadow root 走遍整棵
+ * 评论树，每碰到一个 `bili-comment-action-buttons-renderer`（顶级评论与楼中楼各有一个）就调一次
+ * `insertInto`；翻页、展开楼中楼、lit 重渲染补进来的新元素靠同一套观察器跟上，整树重扫是幂等的，
+ * 插过的会自己跳过。`watchAttrs` 里任何一个开关属性变成 `true` 就启动，全变 `false` 就按
+ * `removalSelector` 收回自己插过的节点并停表。
+ */
+function setupCommentActionButtonsFeature(watchAttrs, removalSelector, insertInto) {
   // 已经挂了观察器的 shadowRoot，避免同一层反复挂。弱引用即可，评论树被换掉后自然回收
   let observedRoots = new WeakSet()
   let commentObservers = []
@@ -552,11 +559,10 @@ function setupCommentIpLocation() {
         if (mutation.type !== 'childList')
           continue
         for (const node of mutation.addedNodes) {
-          // 编辑器里打字引发的抖动不算新内容；自己插进去的属地更不算，不然会自己触发自己
+          // 编辑器里打字引发的抖动不算新内容；自己插进去的节点更不算，不然会自己触发自己
           if (node.nodeType === 1
             && !node.isContentEditable
-            && !node.classList.contains(COMMENT_LOCATION_CLASS)
-            && !node.classList.contains(COMMENT_GENDER_CLASS)) {
+            && !Array.from(node.classList).some(className => className.startsWith('bewly-'))) {
             scheduleWalk()
             return
           }
@@ -569,7 +575,7 @@ function setupCommentIpLocation() {
 
   function walkElement(el) {
     if (el.localName === 'bili-comment-action-buttons-renderer')
-      injectCommentMeta(el)
+      insertInto(el)
 
     // querySelectorAll 穿不过 shadow 边界，所以每碰到一层 shadow root 就自己走下去
     if (el.shadowRoot) {
@@ -590,7 +596,7 @@ function setupCommentIpLocation() {
       walkElement(el)
   }
 
-  // 一批变更只走一遍整棵树（整树重扫是幂等的，插过的会自己跳过）
+  // 一批变更只走一遍整棵树
   function scheduleWalk() {
     if (walkFrame)
       return
@@ -634,14 +640,14 @@ function setupCommentIpLocation() {
     }
   }
 
-  /** 收回已插进去的属地与性别。shadow 里的节点 querySelectorAll 到不了，只能自己穿进去找 */
-  function removeCommentMetas(root) {
-    for (const el of root.querySelectorAll(`.${COMMENT_LOCATION_CLASS}, .${COMMENT_GENDER_CLASS}`))
+  /** 收回已插进去的节点。shadow 里的节点 querySelectorAll 到不了，只能自己穿进去找 */
+  function removeInjectedNodes(root) {
+    for (const el of root.querySelectorAll(removalSelector))
       el.remove()
 
     for (const el of root.querySelectorAll('*')) {
       if (el.shadowRoot)
-        removeCommentMetas(el.shadowRoot)
+        removeInjectedNodes(el.shadowRoot)
     }
   }
 
@@ -660,13 +666,13 @@ function setupCommentIpLocation() {
 
     for (const host of boundHosts) {
       if (host.shadowRoot)
-        removeCommentMetas(host.shadowRoot)
+        removeInjectedNodes(host.shadowRoot)
     }
     release()
   }
 
   function syncWithFlag() {
-    if (isCommentLocationEnabled() || isCommentGenderEnabled())
+    if (watchAttrs.some(attr => document.documentElement.getAttribute(attr) === 'true'))
       enable()
     else
       disable()
@@ -674,13 +680,258 @@ function setupCommentIpLocation() {
 
   new MutationObserver(syncWithFlag).observe(document.documentElement, {
     attributes: true,
-    attributeFilter: [COMMENT_LOCATION_ATTR, COMMENT_GENDER_ATTR],
+    attributeFilter: watchAttrs,
   })
 
   syncWithFlag()
 }
 
-setupCommentIpLocation()
+setupCommentActionButtonsFeature(
+  [COMMENT_LOCATION_ATTR, COMMENT_GENDER_ATTR],
+  `.${COMMENT_LOCATION_CLASS}, .${COMMENT_GENDER_CLASS}`,
+  injectCommentMeta,
+)
+
+// ============================ 评论区翻译 ============================
+// 手机端评论区对外语评论有一枚「查看翻译」，这里在网页端补上同款：操作栏「回复」的右侧加一枚
+// 「翻译」，点了把这条评论翻成中文，再点收起。翻译走 B 站开源的 Index-Translate 接口（OpenAI
+// 兼容格式）。请求直接在页面上下文发：接口允许跨域读取（ACAO: *），页面 Origin 是
+// https://www.bilibili.com，不碰它家 WAF「拉黑扩展来源」那条规则，也就不需要 background 中转
+// 和 DNR 改头。开关写在 <html> 上（src/logic/commentTranslate.ts），与评论区 IP 属地同一套通道。
+
+const COMMENT_TRANSLATE_ATTR = 'data-bewly-comment-translate'
+const COMMENT_TRANSLATE_CLASS = 'bewly-comment-translate'
+const COMMENT_TRANSLATION_CLASS = 'bewly-comment-translation'
+const COMMENT_TRANSLATE_API = 'https://index-translate.bilibili.com/v1/chat/completions'
+// 一次点击按 9b → 35b → 2b 逐个试：9b 出错就升级到质量更好的 35b，再不行降到最快的 2b 兜底
+const COMMENT_TRANSLATE_MODELS = ['index-mt-9b', 'index-mt-35b', 'index-mt-2b']
+// 单次请求太久就放弃，交给链上的下一个模型
+const COMMENT_TRANSLATE_TIMEOUT = 20000
+
+// 判断一条评论是不是外语为主。假名或谚文一出现就是日/韩语；其余看拼音文字与汉字谁占上风——
+// 中文评论给个翻译按钮徒占地方。链接先剥掉，纯链接与纯表情的评论没有可翻的东西。
+function isForeignCommentText(text) {
+  const cleaned = String(text || '').replace(/https?:\/\/\S+/gi, '').replace(/www\.\S+/gi, '')
+  let han = 0
+  let latin = 0
+  let cyrillic = 0
+  let kana = 0
+  let hangul = 0
+  for (const ch of cleaned) {
+    const code = ch.codePointAt(0)
+    if ((code >= 0x3400 && code <= 0x4DBF) || (code >= 0x4E00 && code <= 0x9FFF) || (code >= 0xF900 && code <= 0xFAFF))
+      han++
+    else if ((code >= 0x3041 && code <= 0x309F) || (code >= 0x30A0 && code <= 0x30FF) || (code >= 0x31F0 && code <= 0x31FF))
+      kana++
+    else if (code >= 0xAC00 && code <= 0xD7AF)
+      hangul++
+    else if ((code >= 0x41 && code <= 0x5A) || (code >= 0x61 && code <= 0x7A) || (code >= 0xC0 && code <= 0x24F) || (code >= 0x1E00 && code <= 0x1EFF))
+      latin++
+    else if (code >= 0x400 && code <= 0x4FF)
+      cyrillic++
+  }
+  if (kana > 0 || hangul > 0)
+    return true
+  const alphabetic = han + latin + cyrillic
+  return alphabetic > 0 && han / alphabetic < 0.5
+}
+
+// B 站表情是 [名字] 的形式（如 [脱单doge]），翻译不带它们玩，送翻前剥掉；剥完什么都不剩的
+// 评论没有可翻的东西
+function stripCommentEmotes(text) {
+  return String(text || '').replace(/\[[^[\]]*\]/g, ' ').trim()
+}
+
+// 模型偶尔不干活，改说「您想让我翻译的内容看起来不太完整……」这类提示；出现这种指着用户说话的
+// 句式就当没翻出来，交给下一个模型。刻意收得只认正式的「您」加任务动词，别把
+// 「please provide the link」这类评论的正当翻译错杀掉。
+function isTranslationChatter(reply) {
+  return /您[^。！？]{0,10}(?:[想要能请]|需要|可以|输入|提供|发送|补充)[^。！？]{0,10}(?:翻译|提供|输入|发送|内容|句子|段落|完整)/.test(reply)
+    || /无法翻译|翻译不了|帮您翻译|不太完整|只输入了|原文[是为]|unable to translate/i.test(reply)
+}
+
+// 逐个模型试，谁先给出像样的译文就用谁；全倒下才把错误亮出去
+async function requestCommentTranslation(text) {
+  let lastError
+  for (const model of COMMENT_TRANSLATE_MODELS) {
+    try {
+      return await requestModelTranslation(model, text)
+    }
+    catch (error) {
+      lastError = error
+    }
+  }
+  throw lastError
+}
+
+async function requestModelTranslation(model, text) {
+  const controller = new AbortController()
+  const timer = setTimeout(() => controller.abort(), COMMENT_TRANSLATE_TIMEOUT)
+  try {
+    const response = await fetch(COMMENT_TRANSLATE_API, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      signal: controller.signal,
+      body: JSON.stringify({
+        model,
+        messages: [{ role: 'user', content: `把这段话翻译成中文：${text}` }],
+        chat_template_kwargs: { enable_thinking: false },
+      }),
+    })
+    if (!response.ok)
+      throw new Error(`HTTP ${response.status}`)
+    const payload = await response.json()
+    const content = payload?.choices?.[0]?.message?.content
+    const translated = typeof content === 'string' ? content.trim() : ''
+    // 空结果与「改说人话」都算没翻出来
+    if (!translated || isTranslationChatter(translated))
+      throw new Error('no translation')
+    return translated
+  }
+  finally {
+    clearTimeout(timer)
+  }
+}
+
+// 每条评论的翻译状态挂在它的操作按钮元素上（元素没了状态自然回收）；lit 重渲染冲掉 DOM 后
+// 靠整树重扫补回，已翻好的内容不用重翻
+const commentTranslations = new WeakMap()
+
+function findCommentRenderer(el) {
+  let node = el
+  for (let hop = 0; node && hop < COMMENT_HOST_HOPS; hop++) {
+    if (node.localName === 'bili-comment-renderer' || node.localName === 'bili-comment-reply-renderer')
+      return node
+    const root = node.getRootNode ? node.getRootNode() : null
+    node = root && root.host ? root.host : node.parentElement
+  }
+  return null
+}
+
+/** 取这条评论的文本：优先读组件挂着的接口数据（`content.message`，完整不截断），读不到再退回 DOM 文本 */
+function resolveCommentText(actionButtons) {
+  let node = actionButtons
+  for (let hop = 0; node && hop < COMMENT_HOST_HOPS; hop++) {
+    for (const key of COMMENT_DATA_KEYS) {
+      const data = node[key]
+      const message = data && typeof data === 'object' && data.content && typeof data.content.message === 'string'
+        ? stripCommentEmotes(data.content.message)
+        : ''
+      if (message)
+        return message
+    }
+    const root = node.getRootNode ? node.getRootNode() : null
+    node = root && root.host ? root.host : node.parentElement
+  }
+  const renderer = findCommentRenderer(actionButtons)
+  const text = renderer && renderer.shadowRoot
+    ? stripCommentEmotes(renderer.shadowRoot.querySelector('#contents')?.textContent || '')
+    : ''
+  return text
+}
+
+/** 翻译块插在操作行正上方：顶级评论与楼中楼落到同一个相对位置上 */
+function insertTranslationBlock(actionButtons, text) {
+  // 楼中楼的操作按钮直接挂在 shadow root 下，父节点得用 parentNode 拿（ShadowRoot 不是 Element）
+  const parent = actionButtons.parentNode
+  if (!parent)
+    return
+  let block = actionButtons.previousElementSibling
+  if (!block || block.className !== COMMENT_TRANSLATION_CLASS) {
+    block = document.createElement('div')
+    block.className = COMMENT_TRANSLATION_CLASS
+    // shadow 里用不上扩展的样式表，写行内；文字颜色跟评论正文走（--text1），左边一条分隔线
+    // 取组件自己的线色，跟着主题走
+    block.style.cssText = 'margin:4px 0 2px;color:var(--text1,#18191c);font-size:inherit;line-height:1.6;white-space:pre-wrap;border-left:3px solid var(--line2,#e3e5e7);padding-left:8px;'
+    parent.insertBefore(block, actionButtons)
+  }
+  block.textContent = text
+}
+
+function removeTranslationBlock(actionButtons) {
+  const block = actionButtons.previousElementSibling
+  if (block && block.className === COMMENT_TRANSLATION_CLASS)
+    block.remove()
+}
+
+function makeTranslateButton(actionButtons, text) {
+  const button = document.createElement('span')
+  button.className = COMMENT_TRANSLATE_CLASS
+  button.textContent = '翻译'
+  // 间距与原生操作按钮同一档；悬浮色跟回复按钮一样走 B 站蓝
+  button.style.cssText = `margin-left:${measureCommentBlockGap(actionButtons.shadowRoot)};color:var(--text3,#9499a0);font-size:inherit;white-space:nowrap;cursor:pointer;user-select:none;`
+  button.addEventListener('mouseenter', () => {
+    button.style.color = 'var(--brand_blue,#00aeec)'
+  })
+  button.addEventListener('mouseleave', () => {
+    button.style.color = 'var(--text3,#9499a0)'
+  })
+  button.addEventListener('click', async () => {
+    if (button.dataset.bewlyPending)
+      return
+
+    const entry = commentTranslations.get(actionButtons)
+    if (entry && entry.show) {
+      entry.show = false
+      removeTranslationBlock(actionButtons)
+      button.textContent = '翻译'
+      return
+    }
+    if (entry) {
+      entry.show = true
+      button.textContent = '收起翻译'
+      insertTranslationBlock(actionButtons, entry.text)
+      return
+    }
+
+    button.dataset.bewlyPending = 'true'
+    button.textContent = '翻译中'
+    try {
+      const translated = await requestCommentTranslation(text)
+      commentTranslations.set(actionButtons, { text: translated, show: true })
+      button.textContent = '收起翻译'
+      insertTranslationBlock(actionButtons, translated)
+    }
+    catch {
+      // 失败就地给一行反馈，再点一次就是重试
+      button.textContent = '翻译'
+      insertTranslationBlock(actionButtons, '翻译失败')
+    }
+    finally {
+      delete button.dataset.bewlyPending
+    }
+  })
+  return button
+}
+
+function injectCommentTranslate(actionButtons) {
+  const shadowRoot = actionButtons.shadowRoot
+  if (!shadowRoot)
+    return
+
+  // 按钮本体：lit 重渲染后这里要能补回来，判重看 DOM 而不是看标记
+  if (!shadowRoot.querySelector(`.${COMMENT_TRANSLATE_CLASS}`)) {
+    const text = resolveCommentText(actionButtons)
+    if (isForeignCommentText(text)) {
+      // 在「回复」按钮右侧；找不到回复按钮的老结构退回时间后面
+      const anchor = shadowRoot.querySelector('#reply')
+        || shadowRoot.querySelector('#pubdate')
+      if (anchor)
+        anchor.after(makeTranslateButton(actionButtons, text))
+    }
+  }
+
+  // 展开着的翻译块被 lit 重渲染冲掉后补回
+  const entry = commentTranslations.get(actionButtons)
+  if (entry && entry.show)
+    insertTranslationBlock(actionButtons, entry.text)
+}
+
+setupCommentActionButtonsFeature(
+  [COMMENT_TRANSLATE_ATTR],
+  `.${COMMENT_TRANSLATE_CLASS}, .${COMMENT_TRANSLATION_CLASS}`,
+  injectCommentTranslate,
+)
 
 // ============================ 评论区净化 ============================
 // 整个评论区不显示。评论区是页面自己那颗组件树渲染的（`#commentapp > bili-comments`，番剧页是

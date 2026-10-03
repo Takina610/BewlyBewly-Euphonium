@@ -235,6 +235,12 @@ export interface Settings {
   showCommentIpLocation: boolean
   /** 在属地后面显示性别（`member.sex`）。属地没显示时，性别就占那个位置。 */
   showCommentGender: boolean
+  /**
+   * 在评论区每条外语评论的操作栏里加一枚「翻译」，点了用 B 站开源的 Index-Translate 接口把这条
+   * 评论翻成中文。按钮与请求都由主世界的注入脚本负责，这里只把开关写到 `<html>` 上
+   * （见 `src/logic/commentTranslate.ts`）。模型固定按 9b → 35b → 2b 自动回退，不设选项。
+   */
+  commentTranslateEnabled: boolean
   /** 整个评论区都不显示。 */
   blockCommentSection: boolean
   /**
@@ -458,6 +464,7 @@ export const originalSettings: Settings = {
   videoPageRememberWebFullscreen: true,
   showCommentIpLocation: true,
   showCommentGender: true,
+  commentTranslateEnabled: true,
   blockCommentSection: false,
   enableCommentFilter: false,
   commentFilterOnlyAt: false,

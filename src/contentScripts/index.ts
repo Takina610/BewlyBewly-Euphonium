@@ -13,6 +13,7 @@ import { setupAmbilight } from '~/logic/ambilight'
 import { setupCommentCleanup } from '~/logic/commentCleanup'
 import { setupCommentFilter } from '~/logic/commentFilter'
 import { setupCommentIpLocation } from '~/logic/commentIpLocation'
+import { setupCommentTranslate } from '~/logic/commentTranslate'
 import { setupApp } from '~/logic/common-setup'
 import { setupDanmakuLevelFilter } from '~/logic/danmakuLevelFilter'
 import { setupExactCounts } from '~/logic/exactCounts'
@@ -186,6 +187,9 @@ if (isSupportedPages() || isSupportedIframePages() || isStylesOnlyPage) {
   // Also earlier than the app: the comment section starts loading as soon as the page does, and the
   // inject script can only act on the flag once it is on `<html>`.
   setupCommentIpLocation()
+
+  // Same channel, same reason: the translate buttons follow the same flag-on-`<html>` pattern.
+  setupCommentTranslate()
 
   // Same channel, same reason: the whole comment section is hidden by a rule the inject script puts
   // together, so the flag has to be up before the page finishes laying that section out.

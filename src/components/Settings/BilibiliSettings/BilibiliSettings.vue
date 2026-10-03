@@ -54,6 +54,9 @@ import SettingsItemGroup from '../components/SettingsItemGroup.vue'
         <SettingsItem :title="$t('settings.show_comment_gender')">
           <Radio v-model="settings.showCommentGender" />
         </SettingsItem>
+        <SettingsItem :title="$t('settings.comment_translate')">
+          <Radio v-model="settings.commentTranslateEnabled" />
+        </SettingsItem>
       </SettingsItemGroup>
     </SettingsItemGroup>
 

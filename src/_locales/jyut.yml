@@ -435,6 +435,7 @@ settings:
   block_comment_section: 封鎖留言區
   show_comment_ip_location: 顯示 IP 屬地
   show_comment_gender: 顯示性別
+  comment_translate: 評論區翻譯
   group_user_pages: 頂部欄與個人空間
   show_exact_counts: 數量精確顯示
   group_comment_filter: 留言區過濾

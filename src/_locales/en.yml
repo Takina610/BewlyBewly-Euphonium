@@ -439,6 +439,7 @@ settings:
   block_comment_section: Hide the comment section
   show_comment_ip_location: Show IP location
   show_comment_gender: Show gender
+  comment_translate: Comment translation
   group_user_pages: Top bar and space pages
   show_exact_counts: Show exact counts
   group_comment_filter: Comment Filters

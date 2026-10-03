@@ -437,6 +437,7 @@ settings:
   block_comment_section: 屏蔽评论区
   show_comment_ip_location: 显示 IP 属地
   show_comment_gender: 显示性别
+  comment_translate: 评论区翻译
   group_user_pages: 顶栏与个人空间
   show_exact_counts: 数量精确显示
   group_comment_filter: 评论区过滤

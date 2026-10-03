@@ -136,6 +136,19 @@ it('renders the comment group of the bilibili settings tab, wired to the setting
   await nextTick()
   expect(ipLocationSwitch!.checked).toBe(true)
 
+  // The translate switch follows the same pattern as the IP location one
+  expect(html).toContain('settings.comment_translate')
+  const translateSwitch = switchFor(host, 'settings.comment_translate')
+  expect(translateSwitch, 'the comment translate switch').not.toBeNull()
+
+  settings.value.commentTranslateEnabled = false
+  await nextTick()
+  expect(translateSwitch!.checked).toBe(false)
+
+  settings.value.commentTranslateEnabled = true
+  await nextTick()
+  expect(translateSwitch!.checked).toBe(true)
+
   app.unmount()
 })
 
