@@ -486,8 +486,11 @@ settings:
   enable_moments_keyword_filter: Filter dynamics
   group_live_cleanup: Clean up live-room overlays
   live_cleanup_desc: Selected overlays are hidden.
+  group_live_homepage: Live homepage
   group_live_player: Player
-  live_default_original_quality: Pick original quality on entering a live room
+  live_pause_homepage_preview: Pause room previews on the live homepage
+  live_block_carousel: Block the carousel
+  live_block_room_feed: Block the streamer feed
   live_remove_watermark: Remove the watermark
   live_block_real_name_dialog: Block the real-name verification dialog
   live_cleanup_shopping_card: Shopping card

@@ -21,6 +21,12 @@ function toggleCleanup(key: string) {
 
 <template>
   <div>
+    <SettingsItemGroup :title="$t('settings.group_live_homepage')">
+      <SettingsItem :title="$t('settings.live_pause_homepage_preview')">
+        <Radio v-model="settings.livePauseHomepagePreview" />
+      </SettingsItem>
+    </SettingsItemGroup>
+
     <SettingsItemGroup :title="$t('settings.group_live_cleanup')">
       <SettingsItem :desc="$t('settings.live_cleanup_desc')">
         <template #bottom>
@@ -43,8 +49,11 @@ function toggleCleanup(key: string) {
     </SettingsItemGroup>
 
     <SettingsItemGroup :title="$t('settings.group_live_player')">
-      <SettingsItem :title="$t('settings.live_default_original_quality')">
-        <Radio v-model="settings.liveDefaultOriginalQuality" />
+      <SettingsItem :title="$t('settings.live_block_carousel')">
+        <Radio v-model="settings.liveBlockCarousel" />
+      </SettingsItem>
+      <SettingsItem :title="$t('settings.live_block_room_feed')">
+        <Radio v-model="settings.liveBlockRoomFeed" />
       </SettingsItem>
       <SettingsItem :title="$t('settings.live_remove_watermark')">
         <Radio v-model="settings.liveRemoveWatermark" />

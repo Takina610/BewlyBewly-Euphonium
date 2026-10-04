@@ -162,6 +162,22 @@ export function isHomePage(url: string = location.href): boolean {
 }
 
 /**
+ * Check if the current page is the live homepage (live.bilibili.com), not a live room
+ * @param url the url to check
+ * @returns true if the current page is the live homepage
+ */
+export function isLiveIndexPage(url: string = location.href): boolean {
+  return /^https?:\/\/live\.bilibili\.com\/?(?:[?#].*)?$/.test(url)
+}
+
+/**
+ * Check if the current page is a live room (e.g. live.bilibili.com/33989, /blanc/ is its other shell)
+ */
+export function isLiveRoomPage(url: string = location.href): boolean {
+  return /^https?:\/\/live\.bilibili\.com\/(?:blanc\/)?\d+/.test(url)
+}
+
+/**
  * Check if the current page is a video or bangumi page
  * @param url the url to check
  * @returns true if the current page is a video or bangumi page

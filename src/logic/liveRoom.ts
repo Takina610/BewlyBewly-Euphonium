@@ -8,12 +8,6 @@ import { settings } from '~/logic'
  * 而 `display:none` 一条规则跟到底。这里的选择器来自三份网页端脚本与直播间自己的代码（B 站 App 那份
  * 清单里有些项在网页端并不存在，那些按最接近的结构写，代码里都标了）。
  *
- * 默认原画要在主世界改请求：播放地址是页面自己求的（`getRoomPlayInfo`，进直播间时 `qn=0` 让它自己
- * 挑），只有把那个 0 换成 10000 才是原画。开关写在 `<html>` 上给注入脚本读，与评论区那套同一通道。
- */
-
-/** 直播间页面的开关，主世界的注入脚本按它决定要不要改画质请求。 */
-export const LIVE_QUALITY_ATTR = 'data-bewly-live-original-quality'
 
 /**
  * 每一项要藏的选择器。键与 `src/constants/liveCleanup.ts` 一一对应。
@@ -57,6 +51,12 @@ export const LIVE_WATERMARK_SELECTORS = [
   '.bilibili-live-player-video-logo',
 ]
 
+/** 轮播图：播放器下方那块翻页横幅（flip-view），只屏蔽轮播本身，不动旁边的动态区。 */
+export const LIVE_CAROUSEL_SELECTOR = 'main .left-container:not(#player-ctnr) .flip-view'
+
+/** 主播动态：轮播图旁边的直播间动态块。 */
+export const LIVE_ROOM_FEED_SELECTOR = 'main .left-container:not(#player-ctnr) .room-feed'
+
 /** 实名认证弹窗没有固定的类名可依，只能在短文本的弹层里认它。 */
 const REAL_NAME_TEXT_RE = /实名认证|实名验证|实名信息/
 /** 认到一个弹层时它的文字最长这么长；再长的多半是聊天区，不动。 */
@@ -72,6 +72,8 @@ const REAL_NAME_SCAN_INTERVAL = 2000
 export function buildLiveCleanupStyle(options: {
   items: string[]
   removeWatermark: boolean
+  blockCarousel?: boolean
+  blockRoomFeed?: boolean
 }): string {
   const rules: string[] = []
 
@@ -84,6 +86,12 @@ export function buildLiveCleanupStyle(options: {
     // 水印是画在播放器里的，只能藏不能拆：拆了播放器下次渲染还会画回来
     rules.push(`${LIVE_WATERMARK_SELECTORS.join(', ')} { display: none !important; }`)
   }
+
+  if (options.blockCarousel)
+    rules.push(`${LIVE_CAROUSEL_SELECTOR} { display: none !important; }`)
+
+  if (options.blockRoomFeed)
+    rules.push(`${LIVE_ROOM_FEED_SELECTOR} { display: none !important; }`)
 
   // 实名认证弹窗是认出来之后临时挂上属性的，规则一直留着，谁挂上谁就消失
   rules.push(`[${REAL_NAME_HIDDEN_ATTR}] { display: none !important; }`)
@@ -100,8 +108,9 @@ export function setupLiveRoom() {
     styleEl.textContent = buildLiveCleanupStyle({
       items: settings.value.liveCleanupItems,
       removeWatermark: settings.value.liveRemoveWatermark,
+      blockCarousel: settings.value.liveBlockCarousel,
+      blockRoomFeed: settings.value.liveBlockRoomFeed,
     })
-    document.documentElement.setAttribute(LIVE_QUALITY_ATTR, String(settings.value.liveDefaultOriginalQuality))
   }
 
   /** 短文本的弹层里出现「实名认证」就当它是那个弹窗。 */
@@ -126,7 +135,8 @@ export function setupLiveRoom() {
     () => [
       settings.value.liveCleanupItems,
       settings.value.liveRemoveWatermark,
-      settings.value.liveDefaultOriginalQuality,
+      settings.value.liveBlockCarousel,
+      settings.value.liveBlockRoomFeed,
     ],
     publish,
     { deep: true },

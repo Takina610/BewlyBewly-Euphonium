@@ -17,6 +17,7 @@ import { setupCommentTranslate } from '~/logic/commentTranslate'
 import { setupApp } from '~/logic/common-setup'
 import { setupDanmakuLevelFilter } from '~/logic/danmakuLevelFilter'
 import { setupExactCounts } from '~/logic/exactCounts'
+import { setupLiveHomepagePreview } from '~/logic/liveHomepagePreview'
 import { setupLiveRoom } from '~/logic/liveRoom'
 import { setupMomentsFilter } from '~/logic/momentsFilter'
 import { setupPlaybackSpeed } from '~/logic/playbackSpeed'
@@ -31,7 +32,7 @@ import { setupVideoPageRelateFilter } from '~/logic/videoPageRelateFilter'
 import { setupWebFullscreenMemory } from '~/logic/webFullscreenMemory'
 import RESET_BEWLY_CSS from '~/styles/reset.css?raw'
 import { runWhenIdle } from '~/utils/lazyLoad'
-import { compareVersions, injectCSS, isHomePage, isInIframe, isNotificationPage, isVideoOrBangumiPage } from '~/utils/main'
+import { compareVersions, injectCSS, isHomePage, isInIframe, isLiveRoomPage, isNotificationPage, isVideoOrBangumiPage } from '~/utils/main'
 import { SVG_ICONS } from '~/utils/svgIcons'
 
 import { version } from '../../package.json'
@@ -54,11 +55,6 @@ const currentUrl = document.URL
 
 function isFansMedalWallPage(): boolean {
   return /https?:\/\/live\.bilibili\.com\/p\/html\/live-fansmedal-wall.*/.test(currentUrl)
-}
-
-/** 直播间，形如 `live.bilibili.com/22637261`（`/blanc/` 是它的另一套壳）。 */
-function isLiveRoomPage(): boolean {
-  return /^https?:\/\/live\.bilibili\.com\/(?:blanc\/)?\d+/.test(currentUrl)
 }
 
 function isSupportedPages(): boolean {
@@ -156,6 +152,9 @@ const isStylesOnlyPage = isFansMedalWallPage()
 // （净化浮窗、水印、默认原画）在这里落地。所以它走单独一条路，进不去下面那个大分支。
 if (isLiveRoomPage())
   setupLiveRoom()
+
+// 直播首页的预览暂停与页面形态无关（原版首页的预览同样会自动播放），在受支持分支之外单独跑
+setupLiveHomepagePreview()
 
 if (isSupportedPages() || isSupportedIframePages() || isStylesOnlyPage) {
   if (settings.value.adaptToOtherPageStyles)

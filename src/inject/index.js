@@ -2395,67 +2395,42 @@ function setupAutoLikeState() {
 
 setupAutoLikeState()
 
-// ============================ 直播间默认原画 ============================
-// 直播间的播放地址是页面自己求的：进房间时它带 `qn=0`，让服务端自己挑一档（实测落在蓝光）。
-// 要原画就把那个 0 换成 10000 —— 只在 0 的时候换：用户自己选过清晰度时页面会带上具体的 qn，
-// 那一次是他的选择，不该被改回去。
+// ============================ 直播页预览播放器压制 ============================
+// 直播首页的预览播放器由原页面的脚本驱动，且可能造在游离于文档外的树里，隔离世界里的
+// DOM 清理够不着游离节点。主世界把 HTMLMediaElement.prototype.play 短路掉，JS 驱动的
+// 播放一律不发声。开关由内容脚本按设置挂/摘 <html data-bewly-stop-live-preview>。
 //
-// 开关写在 <html> 的 data-bewly-live-original-quality 上（`src/logic/liveRoom.ts`）。
-
-const LIVE_QUALITY_ATTR = 'data-bewly-live-original-quality'
-/** 原画。不可用时服务端会退到最接近的一档，所以写下去是安全的。 */
-const LIVE_ORIGINAL_QN = 10000
-const LIVE_PLAY_URL_RE = /\/(?:xlive\/web-room\/v2\/index\/getRoomPlayInfo|room\/v1\/Room\/playUrl)(?:\?|$)/
-
-function isLiveQualityEnabled() {
-  return document.documentElement.getAttribute(LIVE_QUALITY_ATTR) === 'true'
-}
-
-/** 把自动选档（`qn=0`）换成原画；其它情况原样返回。 */
-function preferOriginalQuality(url) {
-  if (typeof url !== 'string' || !isLiveQualityEnabled() || !LIVE_PLAY_URL_RE.test(url))
-    return url
-
-  try {
-    const parsed = new URL(url, location.href)
-    if (parsed.searchParams.get('qn') !== '0')
-      return url
-
-    parsed.searchParams.set('qn', String(LIVE_ORIGINAL_QN))
-    return parsed.toString()
+// 补丁无条件常驻（本脚本 document_start 就位，设置是之后异步加载的——装补丁时读一次标记
+// 会输给先到的 play()），拦不拦在每次调用时看标记；标记不在就走原生 play，页面行为与
+// 未装扩展一致。标记挂上时顺手停掉已在播的媒体，兜住标记生效前已经开播的那一小段。
+if (typeof HTMLMediaElement !== 'undefined') {
+  const nativePlay = HTMLMediaElement.prototype.play
+  HTMLMediaElement.prototype.play = function playBewlyGated() {
+    if (document.documentElement.hasAttribute('data-bewly-stop-live-preview'))
+      return Promise.resolve()
+    return nativePlay.call(this)
   }
-  catch {
-    return url
-  }
-}
 
-function setupLiveOriginalQuality() {
-  if (typeof window.fetch === 'function') {
-    const originalFetch = window.fetch.bind(window)
-    window.fetch = function (...args) {
-      const input = args[0]
-      if (typeof input === 'string') {
-        args[0] = preferOriginalQuality(input)
+  const pausePlayingMedia = () => {
+    if (!document.documentElement.hasAttribute('data-bewly-stop-live-preview'))
+      return
+    document.querySelectorAll('video, audio').forEach((media) => {
+      try {
+        media.pause()
       }
-      else if (input && typeof input.url === 'string') {
-        const rewritten = preferOriginalQuality(input.url)
-        if (rewritten !== input.url)
-          args[0] = new Request(rewritten, input)
-      }
-
-      return originalFetch(...args)
-    }
+      catch {}
+    })
   }
-
-  if (typeof XMLHttpRequest !== 'undefined') {
-    const originalOpen = XMLHttpRequest.prototype.open
-    XMLHttpRequest.prototype.open = function (method, url, ...rest) {
-      return originalOpen.call(this, method, preferOriginalQuality(typeof url === 'string' ? url : String(url ?? '')), ...rest)
-    }
-  }
+  // 标记挂上时停掉已在播的；之后新插入的媒体（muted autoplay 是浏览器直接播的，不走
+  // play()，拦不到）见到即停，标记在就一直看着
+  new MutationObserver(pausePlayingMedia).observe(document.documentElement, {
+    attributes: true,
+    attributeFilter: ['data-bewly-stop-live-preview'],
+    childList: true,
+    subtree: true,
+  })
+  pausePlayingMedia()
 }
-
-setupLiveOriginalQuality()
 
 // 所有规则登记完了，接口钩子在这里统一装一次（见上面那段注释：一套钩子，多少条规则都只一层）。
 installJsonResponseHooks()

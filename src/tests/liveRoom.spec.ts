@@ -1,7 +1,7 @@
 import { beforeEach, expect, it, vi } from 'vitest'
 import { nextTick } from 'vue'
 
-import { buildLiveCleanupStyle, LIVE_QUALITY_ATTR, setupLiveRoom } from '~/logic/liveRoom'
+import { buildLiveCleanupStyle, setupLiveRoom } from '~/logic/liveRoom'
 import { settings } from '~/logic/storage'
 
 vi.mock('webextension-polyfill', () => {
@@ -53,9 +53,7 @@ beforeEach(() => {
   vi.useFakeTimers()
   settings.value.liveCleanupItems = []
   settings.value.liveRemoveWatermark = false
-  settings.value.liveDefaultOriginalQuality = true
   document.body.innerHTML = ''
-  document.documentElement.removeAttribute(LIVE_QUALITY_ATTR)
 })
 
 it('writes one rule per ticked overlay, and nothing else', () => {
@@ -89,17 +87,6 @@ it('injects the rules for the overlays that are ticked', async () => {
   expect(cleanupStyle()).toContain('#gift-control-vm { display: none !important; }')
   // 没勾的不在里面
   expect(cleanupStyle()).not.toContain('#game-id { display: none !important; }')
-})
-
-it('tells the player to ask for original quality', async () => {
-  ensureStarted()
-
-  expect(document.documentElement.getAttribute(LIVE_QUALITY_ATTR)).toBe('true')
-
-  settings.value.liveDefaultOriginalQuality = false
-  await vi.advanceTimersByTimeAsync(0)
-
-  expect(document.documentElement.getAttribute(LIVE_QUALITY_ATTR)).toBe('false')
 })
 
 it('recognises the real-name dialog by its text, and leaves the chat alone', async () => {

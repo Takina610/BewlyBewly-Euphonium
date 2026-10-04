@@ -482,8 +482,11 @@ settings:
   enable_moments_keyword_filter: 開過濾
   group_live_cleanup: 清乾淨直播間啲浮窗
   live_cleanup_desc: 揀咗就唔顯示。
+  group_live_homepage: 直播首頁
   group_live_player: 播放器
-  live_default_original_quality: 入直播間就揀原畫
+  live_pause_homepage_preview: 暫停直播首頁預覽直播間
+  live_block_carousel: 屏蔽輪播圖
+  live_block_room_feed: 屏蔽主播動態
   live_remove_watermark: 除水印
   live_block_real_name_dialog: 屏蔽實名認證彈窗
   live_cleanup_shopping_card: 購物卡

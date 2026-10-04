@@ -453,9 +453,9 @@ settings:
   comment_filter_topic: 话题（包含匹配）
   comment_filter_topic_hint: 话题名
 
-  # 动态页与直播间
+  # 动态页与直播页
   menu_moments_page: 动态页
-  menu_live_page: 直播间
+  menu_live_page: 直播页
   group_moments_block: 屏蔽
   moments_block_invisible: 屏蔽无权查看的动态
   moments_block_jump_ads: 屏蔽跳转广告动态
@@ -484,8 +484,11 @@ settings:
   enable_moments_keyword_filter: 启用过滤
   group_live_cleanup: 净化直播间浮窗
   live_cleanup_desc: 选中即隐藏。
+  group_live_homepage: 直播首页
   group_live_player: 播放器
-  live_default_original_quality: 进入直播间时选原画
+  live_pause_homepage_preview: 暂停直播首页预览直播间
+  live_block_carousel: 屏蔽轮播图
+  live_block_room_feed: 屏蔽主播动态
   live_remove_watermark: 移除水印
   live_block_real_name_dialog: 屏蔽实名认证弹窗
   live_cleanup_shopping_card: 购物卡片

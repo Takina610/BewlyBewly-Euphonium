@@ -281,11 +281,16 @@ export interface Settings {
   /** 净化直播间浮窗：要清掉的浮窗键，见 `src/logic/liveRoom.ts`。空名单表示什么都不清。 */
   liveCleanupItems: string[]
   /** 进入直播间时默认选原画。 */
-  liveDefaultOriginalQuality: boolean
   /** 移除直播间的播放器水印。 */
   liveRemoveWatermark: boolean
   /** 屏蔽直播间的实名认证弹窗。 */
   liveBlockRealNameDialog: boolean
+  /** 暂停直播首页自动试播的预览画面（主世界拦 play()）。 */
+  livePauseHomepagePreview: boolean
+  /** 屏蔽直播间播放器下方的轮播图。 */
+  liveBlockCarousel: boolean
+  /** 屏蔽轮播图旁边的主播动态块。 */
+  liveBlockRoomFeed: boolean
 }
 
 export const originalSettings: Settings = {
@@ -490,9 +495,11 @@ export const originalSettings: Settings = {
 
   // 直播间这几项默认开：用户点名要的那些浮窗一进直播间就该清掉
   liveCleanupItems: LIVE_CLEANUP_KEYS,
-  liveDefaultOriginalQuality: true,
   liveRemoveWatermark: true,
   liveBlockRealNameDialog: true,
+  livePauseHomepagePreview: false,
+  liveBlockCarousel: true,
+  liveBlockRoomFeed: true,
 }
 
 export const settings = useStorageLocal('settings', ref<Settings>(originalSettings), { mergeDefaults: true })
